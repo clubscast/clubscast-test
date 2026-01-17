@@ -23,8 +23,22 @@ export default function Home() {
           background: 'linear-gradient(135deg, #667eea, #764ba2)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent'
+
+        {/* Logo */}
+        <div style={{ marginBottom: '30px' }}>
+          <img 
+            src="/logo.png" 
+            alt="ClubsCast"
+            style={{
+              maxWidth: '300px',
+              width: '100%',
+              height: 'auto',
+              filter: 'drop-shadow(0 0 30px rgba(255,0,110,0.6))'
+            }}
+          />
+        </div>
         }}>
-          🎵 ClubsCast
+          ClubsCast
         </h1>
         <p style={{
           fontSize: '24px',
