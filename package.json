@@ -1,7 +1,7 @@
 {
   "name": "clubscast-dj-system",
   "version": "1.0.0",
-  "description": "ClubsCast DJ Song Request System",
+  "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -10,25 +10,6 @@
   "dependencies": {
     "next": "14.0.4",
     "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "@supabase/supabase-js": "^2.39.0",
-    "stripe": "^14.10.0"
+    "react-dom": "18.2.0"
   }
 }
-```
-
-4. Click **"Commit changes"** → **"Commit directly to main"** → **"Commit changes"**
-
----
-
-### **File 2: .gitignore**
-
-1. Click **"Add file"** → **"Create new file"**
-2. Name it: `.gitignore`
-3. Paste:
-```
-node_modules/
-.next/
-.env
-.env.local
-.vercel
