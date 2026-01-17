@@ -14,11 +14,15 @@ export default function EventQueue() {
   useEffect(() => {
     if (code) {
       loadEventAndRequests();
-      
-      const interval = setInterval(loadEventAndRequests, 10000);
-      return () => clearInterval(interval);
     }
   }, [code]);
+
+  useEffect(() => {
+    if (event) {
+      const interval = setInterval(loadRequests, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [event]);
 
   const loadEventAndRequests = async () => {
     try {
@@ -29,40 +33,38 @@ export default function EventQueue() {
         .single();
 
       if (eventError) throw eventError;
-      if (!eventData) {
-        setError('Event not found');
-        setLoading(false);
-        return;
-      }
-
+      
       setEvent(eventData);
-
-    const { data } = await supabase
-  .from('requests')
-  .select('*')
-  .eq('event_id', event.id)
-  .eq('request_status', 'pending')
-  .order('submitted_at', { ascending: true });
-  
-setRequests(data || []);
+      await loadRequests(eventData.id);
       setLoading(false);
-
     } catch (err) {
       setError(err.message);
       setLoading(false);
     }
   };
 
+  const loadRequests = async (eventId = event?.id) => {
+    if (!eventId) return;
+
+    const { data } = await supabase
+      .from('requests')
+      .select('*')
+      .eq('event_id', eventId)
+      .eq('request_status', 'pending')
+      .order('submitted_at', { ascending: true });
+
+    setRequests(data || []);
+  };
+
   if (loading) {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0b0b0d 0%, #1a1a2e 100%)',
+        background: '#0b0b0d',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: 'white',
-        fontFamily: '-apple-system, sans-serif'
+        color: 'white'
       }}>
         Loading...
       </div>
@@ -73,60 +75,82 @@ setRequests(data || []);
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0b0b0d 0%, #1a1a2e 100%)',
+        background: '#0b0b0d',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: 'white',
-        fontFamily: '-apple-system, sans-serif',
-        padding: '20px',
-        textAlign: 'center'
+        padding: '20px'
       }}>
-        <div>
-          <h1 style={{ fontSize: '48px', marginBottom: '20px' }}>😕</h1>
-          <h2 style={{ color: '#ff6b35', marginBottom: '10px' }}>Event Not Found</h2>
+        <div style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,0,0,0.3)',
+          padding: '40px',
+          borderRadius: '20px',
+          textAlign: 'center',
+          maxWidth: '400px'
+        }}>
+          <h1 style={{ color: '#ff6b6b', marginBottom: '10px' }}>
+            Event Not Found
+          </h1>
           <p style={{ color: 'rgba(255,255,255,0.6)' }}>
-            {error || 'This event does not exist'}
+            {error || 'This event code is invalid or has been deleted.'}
           </p>
         </div>
       </div>
     );
   }
 
-  const nowPlaying = requests.find(r => r.request_status === 'playing');
-  const upNext = requests.filter(r => r.request_status === 'approved');
-
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0b0b0d 0%, #1a1a2e 100%)',
+      background: 'linear-gradient(135deg, #0b0b0d 0%, #1a0a1f 100%)',
       color: '#eef',
       padding: '20px',
-      fontFamily: '-apple-system, sans-serif'
+      fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif'
     }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         
-        <div style={{ 
+        {/* Header */}
+        <div style={{
           textAlign: 'center',
           marginBottom: '40px',
-          paddingBottom: '30px',
-          borderBottom: '1px solid rgba(255,255,255,0.1)'
+          paddingTop: '20px'
         }}>
-          <h1 style={{ 
-            color: '#ff6b35',
-            margin: '0 0 10px 0',
-            fontSize: '36px'
+          <h1 style={{
+            fontSize: '36px',
+            fontWeight: '700',
+            background: 'linear-gradient(135deg, #ff006e, #00f5ff)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            marginBottom: '10px'
           }}>
-            🎵 {event.event_name}
+            {event.event_name}
           </h1>
-          <p style={{ 
-            color: '#aaa',
-            margin: '0 0 20px 0',
-            fontSize: '16px'
+          <p style={{
+            color: 'rgba(255,255,255,0.6)',
+            fontSize: '16px',
+            marginBottom: '5px'
           }}>
-            📍 {event.venue} • 📅 {new Date(event.event_date).toLocaleDateString()}
+            {event.venue}
           </p>
-          
+          <p style={{
+            color: 'rgba(255,255,255,0.5)',
+            fontSize: '14px'
+          }}>
+            {new Date(event.event_date).toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}
+          </p>
+        </div>
+
+        {/* Request Button */}
+        <div style={{
+          textAlign: 'center',
+          marginBottom: '40px'
+        }}>
           <button
             onClick={() => router.push(`/event/${code}/request`)}
             style={{
@@ -138,181 +162,128 @@ setRequests(data || []);
               fontSize: '18px',
               fontWeight: '700',
               cursor: 'pointer',
-              boxShadow: '0 0 30px rgba(255,0,110,0.5)'
+              boxShadow: '0 4px 20px rgba(255,0,110,0.4)',
+              transition: 'transform 0.2s'
             }}
+            onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
           >
             Request a Song
           </button>
         </div>
 
-        {nowPlaying && (
-          <div style={{ marginBottom: '40px' }}>
-            <h2 style={{ 
-              fontSize: '20px',
-              marginBottom: '15px',
-              color: '#fff'
-            }}>
-               Now Playing
-            </h2>
-            <div style={{
-              background: 'rgba(0,255,136,0.08)',
-              borderLeft: '4px solid #00ff88',
-              borderRadius: '12px',
-              padding: '20px',
-              boxShadow: '0 0 20px rgba(0,255,136,0.2)'
-            }}>
-              <div style={{ 
-                fontSize: '22px',
-                fontWeight: '700',
-                marginBottom: '8px',
-                color: '#fff'
-              }}>
-                {nowPlaying.song}
-              </div>
-              <div style={{ 
-                fontSize: '18px',
-                opacity: 0.9,
-                marginBottom: '10px',
-                color: '#00ff88'
-              }}>
-                {nowPlaying.artist}
-              </div>
-              <div style={{ 
-                fontSize: '14px',
-                opacity: 0.7
-              }}>
-                 Requested by {nowPlaying.requester_name}
-              </div>
-              {nowPlaying.message && (
-                <div style={{
-                  marginTop: '10px',
-                  padding: '10px',
-                  background: 'rgba(255,255,255,0.05)',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  fontStyle: 'italic',
-                  color: 'rgba(255,255,255,0.8)'
-                }}>
-                   "{nowPlaying.message}"
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Queue Section */}
+        <div style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '20px',
+          padding: '30px',
+          backdropFilter: 'blur(10px)'
+        }}>
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: '700',
+            marginBottom: '20px',
+            color: '#00f5ff',
+            textAlign: 'center'
+          }}>
+            Song Queue
+          </h2>
 
-        {upNext.length > 0 && (
-          <div style={{ marginBottom: '40px' }}>
-            <h2 style={{ 
-              fontSize: '20px',
-              marginBottom: '15px',
-              color: '#fff'
-            }}>
-              ⏭️ Up Next ({upNext.length})
-            </h2>
-            <div style={{ 
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}>
-              {upNext.slice(0, 10).map((request, index) => (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}>
+            {requests.length === 0 ? (
+              <p style={{
+                textAlign: 'center',
+                color: 'rgba(255,255,255,0.4)',
+                padding: '40px 20px',
+                fontSize: '16px'
+              }}>
+                No songs in queue yet. Be the first to request!
+              </p>
+            ) : (
+              requests.map((request, index) => (
                 <div
                   key={request.id}
                   style={{
                     background: 'rgba(255,255,255,0.05)',
-                    borderLeft: '4px solid #ff6b35',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    padding: '18px',
                     borderRadius: '12px',
-                    padding: '16px',
-                    transition: 'transform 0.2s'
+                    transition: 'all 0.3s ease'
                   }}
                 >
-                  <div style={{ 
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    marginBottom: '6px',
-                    color: '#fff'
-                  }}>
-                    {index + 1}. {request.song}
-                  </div>
-                  <div style={{ 
-                    fontSize: '16px',
-                    opacity: 0.9,
-                    marginBottom: '8px',
-                    color: '#00f5ff'
-                  }}>
-                    {request.artist}
-                  </div>
-                  <div style={{ 
-                    fontSize: '13px',
-                    opacity: 0.7,
+                  <div style={{
                     display: 'flex',
-                    gap: '15px',
-                    flexWrap: 'wrap'
+                    alignItems: 'flex-start',
+                    gap: '15px'
                   }}>
-                    <span>👤 {request.requester_name}</span>
-                    {request.tier !== 'standard' && (
-                      <span style={{ 
-                        color: '#ff006e',
-                        fontWeight: '600'
-                      }}>
-                        ⚡ {request.tier === 'skip_3' ? 'Skip 3' : 'Play Next'}
-                      </span>
-                    )}
-                  </div>
-                  {request.message && (
                     <div style={{
-                      marginTop: '10px',
-                      padding: '8px',
-                      background: 'rgba(255,255,255,0.03)',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      fontStyle: 'italic',
-                      color: 'rgba(255,255,255,0.7)'
+                      fontSize: '18px',
+                      fontWeight: '700',
+                      color: '#00f5ff',
+                      minWidth: '30px'
                     }}>
-                      💬 "{request.message}"
+                      {index + 1}
                     </div>
-                  )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        fontSize: '18px',
+                        fontWeight: '700',
+                        marginBottom: '5px',
+                        color: '#fff'
+                      }}>
+                        {request.song}
+                      </div>
+                      <div style={{
+                        fontSize: '15px',
+                        color: 'rgba(255,255,255,0.7)',
+                        marginBottom: '8px'
+                      }}>
+                        {request.artist}
+                      </div>
+                      <div style={{
+                        fontSize: '13px',
+                        color: 'rgba(255,255,255,0.5)'
+                      }}>
+                        Requested by {request.requester_name}
+                      </div>
+                      {request.message && (
+                        <div style={{
+                          marginTop: '10px',
+                          padding: '10px',
+                          background: 'rgba(255,255,255,0.03)',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontStyle: 'italic',
+                          color: 'rgba(255,255,255,0.6)'
+                        }}>
+                          "{request.message}"
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
+              ))
+            )}
           </div>
-        )}
+        </div>
 
-        {!nowPlaying && upNext.length === 0 && (
-          <div style={{
-            textAlign: 'center',
-            padding: '60px 20px',
-            opacity: 0.5
-          }}>
-            <h2 style={{ 
-              fontSize: '48px',
-              marginBottom: '20px'
-            }}>
-              
-            </h2>
-            <h3 style={{ 
-              fontSize: '24px',
-              marginBottom: '10px',
-              color: '#fff'
-            }}>
-              No requests yet!
-            </h3>
-            <p style={{ 
-              color: 'rgba(255,255,255,0.6)'
-            }}>
-              Be the first to request a song
-            </p>
-          </div>
-        )}
-
+        {/* Footer */}
         <div style={{
-          marginTop: '60px',
           textAlign: 'center',
-          paddingTop: '20px',
-          borderTop: '1px solid rgba(255,255,255,0.1)',
-          opacity: 0.4,
-          fontSize: '12px'
+          marginTop: '40px',
+          paddingBottom: '20px'
         }}>
-          ClubsCast Queue • Auto-refresh every 10s
+          <p style={{
+            color: 'rgba(255,255,255,0.3)',
+            fontSize: '14px'
+          }}>
+            Powered by ClubsCast
+          </p>
         </div>
       </div>
     </div>
