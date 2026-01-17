@@ -209,8 +209,12 @@ export default function EventQueue() {
                 <div
                   key={request.id}
                   style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    background: request.used_host_code 
+                      ? `${event.host_code_color}15`
+                      : 'rgba(255,255,255,0.05)',
+                    border: request.used_host_code
+                      ? `2px solid ${event.host_code_color}`
+                      : '1px solid rgba(255,255,255,0.1)',
                     padding: '18px',
                     borderRadius: '12px',
                     transition: 'all 0.3s ease'
@@ -224,7 +228,7 @@ export default function EventQueue() {
                     <div style={{
                       fontSize: '18px',
                       fontWeight: '700',
-                      color: '#00f5ff',
+                      color: request.used_host_code ? event.host_code_color : '#00f5ff',
                       minWidth: '30px'
                     }}>
                       {index + 1}
@@ -250,6 +254,19 @@ export default function EventQueue() {
                         color: 'rgba(255,255,255,0.5)'
                       }}>
                         Requested by {request.requester_name}
+                        {request.used_host_code && (
+                          <span style={{
+                            marginLeft: '10px',
+                            padding: '2px 8px',
+                            background: `${event.host_code_color}30`,
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            color: event.host_code_color
+                          }}>
+                            HOST
+                          </span>
+                        )}
                       </div>
                       {request.message && (
                         <div style={{
