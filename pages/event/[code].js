@@ -37,14 +37,14 @@ export default function EventQueue() {
 
       setEvent(eventData);
 
-     const { data } = await supabase
-    .from('requests')
-    .select('*')
-    .eq('event_id', event.id)
-    .eq('request_status', 'pending')
-    .order('submitted_at', { ascending: true });
-
-      setRequests(requestsData || []);
+    const { data } = await supabase
+  .from('requests')
+  .select('*')
+  .eq('event_id', event.id)
+  .eq('request_status', 'pending')
+  .order('submitted_at', { ascending: true });
+  
+setRequests(data || []);
       setLoading(false);
 
     } catch (err) {
