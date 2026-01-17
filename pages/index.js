@@ -76,6 +76,21 @@ export default function Home() {
             View Test Event
           </a>
         </div>
+
+        <div style={{
+          marginTop: '40px',
+          padding: '20px',
+          background: 'rgba(0,245,255,0.05)',
+          borderRadius: '10px'
+        }}>
+          <p style={{
+            fontSize: '14px',
+            color: 'rgba(255,255,255,0.7)',
+            margin: '0'
+          }}>
+            Powered by Jinkz Music LLC
+          </p>
+        </div>
       </div>
     </div>
   );
