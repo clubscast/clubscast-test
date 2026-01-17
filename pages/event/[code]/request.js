@@ -490,6 +490,19 @@ function RequestFormContent({ eventCode }) {
               </div>
             )}
 
+            {/* DEBUG INFO */}
+            <div style={{
+              padding: '10px',
+              background: 'rgba(255,255,0,0.1)',
+              border: '1px solid yellow',
+              borderRadius: '8px',
+              marginBottom: '15px',
+              fontSize: '12px',
+              color: 'yellow'
+            }}>
+              Debug: require_payment={String(event.require_payment)}, hostCodeValid={String(hostCodeValid)}, isFreeRequest={String(isFreeRequest)}
+            </div>
+
             {/* Payment Card - Only show if payment required and no valid host code */}
             {event.require_payment && !hostCodeValid && (
               <div style={{
