@@ -48,12 +48,36 @@ export default function Home() {
           Live DJ sets streamed to your private event.
         </p>
 
-        <div style={{
+      <div style={{
           display: 'flex',
           gap: '15px',
           justifyContent: 'center',
           flexWrap: 'wrap'
         }}>
+          <a href="/login" style={{
+            padding: '16px 32px',
+            background: '#ff006e',
+            color: 'white',
+            textDecoration: 'none',
+            borderRadius: '12px',
+            fontWeight: '700',
+            fontSize: '16px'
+          }}>
+            DJ Login
+          </a>
+          
+          <a href="/signup" style={{
+            padding: '16px 32px',
+            background: '#00f5ff',
+            color: '#0a0a0a',
+            textDecoration: 'none',
+            borderRadius: '12px',
+            fontWeight: '700',
+            fontSize: '16px'
+          }}>
+            DJ Signup
+          </a>
+        </div>
           <a href="/dashboard" style={{
             padding: '16px 32px',
             background: '#ff006e',
