@@ -1,15 +1,21 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useRouter } from 'next/router';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
-export default function RequestForm() {
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+
+function RequestFormContent({ eventCode }) {
   const router = useRouter();
-  const { code } = router.query;
+  const stripe = useStripe();
+  const elements = useElements();
   
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   const [formData, setFormData] = useState({
     requester_name: '',
@@ -24,17 +30,17 @@ export default function RequestForm() {
   const [hostCodeError, setHostCodeError] = useState('');
 
   useEffect(() => {
-    if (code) {
+    if (eventCode) {
       loadEvent();
     }
-  }, [code]);
+  }, [eventCode]);
 
   const loadEvent = async () => {
     try {
       const { data: eventData, error: eventError } = await supabase
         .from('events')
         .select('*')
-        .eq('event_code', code)
+        .eq('event_code', eventCode)
         .single();
 
       if (eventError) throw eventError;
@@ -74,50 +80,112 @@ export default function RequestForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setProcessing(true);
 
     try {
       const selectedTier = formData.tier;
       const amount = event[`${selectedTier}_price`];
       const tierName = event[`${selectedTier}_name`];
+      const isFreeRequest = !event.require_payment || hostCodeValid;
 
-      const requestData = {
-        event_id: event.id,
-        requester_name: formData.requester_name,
-        song: formData.song,
-        artist: formData.artist,
-        message: formData.message || null,
-        tier_name: tierName,
-        amount: (!event.require_payment || hostCodeValid) ? 0 : amount,
-        payment_status: (!event.require_payment || hostCodeValid) ? 'free' : 'pending',
-        request_status: 'pending',
-        used_host_code: hostCodeValid
-      };
-
-      const { data, error: insertError } = await supabase
+      // Insert request into database first
+      const { data: requestData, error: insertError } = await supabase
         .from('requests')
-        .insert([requestData])
-        .select();
+        .insert([{
+          event_id: event.id,
+          requester_name: formData.requester_name,
+          song: formData.song,
+          artist: formData.artist,
+          message: formData.message || null,
+          tier_name: tierName,
+          amount: isFreeRequest ? 0 : amount,
+          payment_status: isFreeRequest ? 'free' : 'pending',
+          request_status: 'pending',
+          used_host_code: hostCodeValid
+        }])
+        .select()
+        .single();
 
       if (insertError) throw insertError;
 
-      // Decrement host code uses if used
-      if (hostCodeValid) {
-        await supabase
-          .from('events')
-          .update({ 
-            host_code_uses_remaining: event.host_code_uses_remaining - 1 
-          })
-          .eq('id', event.id);
+      // If free request, we're done
+      if (isFreeRequest) {
+        // Decrement host code uses if used
+        if (hostCodeValid) {
+          await supabase
+            .from('events')
+            .update({ 
+              host_code_uses_remaining: event.host_code_uses_remaining - 1 
+            })
+            .eq('id', event.id);
+        }
+
+        setSuccess(true);
+        setTimeout(() => {
+          router.push(`/event/${eventCode}`);
+        }, 2000);
+        return;
       }
 
+      // Process payment for paid requests
+      if (!stripe || !elements) {
+        throw new Error('Stripe not loaded');
+      }
+
+      // Create payment intent
+      const response = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amount,
+          eventId: event.id,
+          requestId: requestData.id,
+        }),
+      });
+
+      const { clientSecret, error: intentError } = await response.json();
+      if (intentError) throw new Error(intentError);
+
+      // Confirm payment
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: elements.getElement(CardElement),
+          billing_details: {
+            name: formData.requester_name,
+          },
+        },
+      });
+
+      if (stripeError) {
+        // Payment failed - update request status
+        await supabase
+          .from('requests')
+          .update({ 
+            payment_status: 'failed',
+            request_status: 'rejected'
+          })
+          .eq('id', requestData.id);
+        
+        throw new Error(stripeError.message);
+      }
+
+      // Payment succeeded - update request
+      await supabase
+        .from('requests')
+        .update({ 
+          payment_status: 'captured',
+          stripe_payment_id: paymentIntent.id
+        })
+        .eq('id', requestData.id);
+
       setSuccess(true);
-      
       setTimeout(() => {
-        router.push(`/event/${code}`);
+        router.push(`/event/${eventCode}`);
       }, 2000);
 
     } catch (err) {
       setError(err.message);
+      setProcessing(false);
     }
   };
 
@@ -228,6 +296,7 @@ export default function RequestForm() {
               value={formData.requester_name}
               onChange={(e) => setFormData({...formData, requester_name: e.target.value})}
               required
+              disabled={processing}
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -247,6 +316,7 @@ export default function RequestForm() {
               value={formData.song}
               onChange={(e) => setFormData({...formData, song: e.target.value})}
               required
+              disabled={processing}
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -266,6 +336,7 @@ export default function RequestForm() {
               value={formData.artist}
               onChange={(e) => setFormData({...formData, artist: e.target.value})}
               required
+              disabled={processing}
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -284,6 +355,7 @@ export default function RequestForm() {
               value={formData.message}
               onChange={(e) => setFormData({...formData, message: e.target.value})}
               rows="3"
+              disabled={processing}
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -321,6 +393,7 @@ export default function RequestForm() {
                   placeholder="Enter host code for free request"
                   value={formData.host_code}
                   onChange={(e) => setFormData({...formData, host_code: e.target.value.toUpperCase()})}
+                  disabled={processing}
                   style={{
                     width: '100%',
                     boxSizing: 'border-box',
@@ -384,8 +457,9 @@ export default function RequestForm() {
                         background: formData.tier === tier ? 'rgba(255,0,110,0.2)' : 'rgba(255,255,255,0.03)',
                         border: `1px solid ${formData.tier === tier ? '#ff006e' : 'rgba(255,255,255,0.1)'}`,
                         borderRadius: '8px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
+                        cursor: processing ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s',
+                        opacity: processing ? 0.5 : 1
                       }}
                     >
                       <input
@@ -394,6 +468,7 @@ export default function RequestForm() {
                         value={tier}
                         checked={formData.tier === tier}
                         onChange={(e) => setFormData({...formData, tier: e.target.value})}
+                        disabled={processing}
                         style={{ marginRight: '10px' }}
                       />
                       <span style={{
@@ -411,6 +486,45 @@ export default function RequestForm() {
                       </span>
                     </label>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Payment Card - Only show if payment required and no valid host code */}
+            {event.require_payment && !hostCodeValid && (
+              <div style={{
+                padding: '15px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '10px',
+                marginBottom: '20px'
+              }}>
+                <label style={{
+                  display: 'block',
+                  color: 'rgba(255,255,255,0.7)',
+                  fontSize: '14px',
+                  marginBottom: '12px'
+                }}>
+                  Card Details
+                </label>
+                <div style={{
+                  padding: '14px',
+                  background: 'white',
+                  borderRadius: '8px'
+                }}>
+                  <CardElement
+                    options={{
+                      style: {
+                        base: {
+                          fontSize: '16px',
+                          color: '#0b0b0d',
+                          '::placeholder': {
+                            color: '#999',
+                          },
+                        },
+                      },
+                    }}
+                  />
                 </div>
               </div>
             )}
@@ -447,29 +561,38 @@ export default function RequestForm() {
 
             <button
               type="submit"
+              disabled={processing || (!isFreeRequest && (!stripe || !elements))}
               style={{
                 width: '100%',
                 padding: '16px',
-                background: isFreeRequest 
-                  ? 'linear-gradient(135deg, #00ff88, #00cc6a)'
-                  : 'linear-gradient(135deg, #ff006e, #ff4d8f)',
+                background: processing 
+                  ? 'rgba(255,255,255,0.1)'
+                  : isFreeRequest 
+                    ? 'linear-gradient(135deg, #00ff88, #00cc6a)'
+                    : 'linear-gradient(135deg, #ff006e, #ff4d8f)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '12px',
                 fontSize: '18px',
                 fontWeight: '700',
-                cursor: 'pointer',
+                cursor: processing ? 'not-allowed' : 'pointer',
+                opacity: processing ? 0.6 : 1,
                 boxShadow: isFreeRequest
                   ? '0 4px 20px rgba(0,255,136,0.4)'
                   : '0 4px 20px rgba(255,0,110,0.4)'
               }}
             >
-              {isFreeRequest ? 'Submit Free Request' : `Submit Request - $${event[`${formData.tier}_price`]}`}
+              {processing 
+                ? 'Processing...' 
+                : isFreeRequest 
+                  ? 'Submit Free Request' 
+                  : `Pay $${event[`${formData.tier}_price`]} & Submit`}
             </button>
           </form>
 
           <button
-            onClick={() => router.push(`/event/${code}`)}
+            onClick={() => router.push(`/event/${eventCode}`)}
+            disabled={processing}
             style={{
               width: '100%',
               marginTop: '15px',
@@ -479,7 +602,8 @@ export default function RequestForm() {
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '10px',
               fontSize: '14px',
-              cursor: 'pointer'
+              cursor: processing ? 'not-allowed' : 'pointer',
+              opacity: processing ? 0.5 : 1
             }}
           >
             Back to Queue
@@ -487,5 +611,16 @@ export default function RequestForm() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RequestForm() {
+  const router = useRouter();
+  const { code } = router.query;
+
+  return (
+    <Elements stripe={stripePromise}>
+      <RequestFormContent eventCode={code} />
+    </Elements>
   );
 }
