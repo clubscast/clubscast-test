@@ -8,17 +8,20 @@ export default function RequestForm() {
   
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  
+  const [success, setSuccess] = useState(false);
+
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+    requester_name: '',
     song: '',
     artist: '',
     message: '',
-    tier: 'standard'
+    tier: 'tier_1',
+    host_code: ''
   });
+
+  const [hostCodeValid, setHostCodeValid] = useState(false);
+  const [hostCodeError, setHostCodeError] = useState('');
 
   useEffect(() => {
     if (code) {
@@ -35,67 +38,86 @@ export default function RequestForm() {
         .single();
 
       if (eventError) throw eventError;
-      if (!eventData) {
-        setError('Event not found');
-        setLoading(false);
-        return;
-      }
-
       setEvent(eventData);
       setLoading(false);
-
     } catch (err) {
       setError(err.message);
       setLoading(false);
     }
   };
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+  const checkHostCode = async () => {
+    if (!formData.host_code.trim()) {
+      setHostCodeValid(false);
+      setHostCodeError('');
+      return;
+    }
+
+    if (formData.host_code.toUpperCase() === event.host_code && event.host_code_uses_remaining > 0) {
+      setHostCodeValid(true);
+      setHostCodeError('');
+    } else if (formData.host_code.toUpperCase() === event.host_code && event.host_code_uses_remaining === 0) {
+      setHostCodeValid(false);
+      setHostCodeError('Host code has no remaining uses');
+    } else {
+      setHostCodeValid(false);
+      setHostCodeError('Invalid host code');
+    }
   };
+
+  useEffect(() => {
+    if (event && event.host_code) {
+      checkHostCode();
+    }
+  }, [formData.host_code, event]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
     setError('');
 
     try {
-      // Get price based on tier
-      let amount = event.standard_price;
-      if (formData.tier === 'skip_3') amount = event.skip_3_price;
-      if (formData.tier === 'play_next') amount = event.play_next_price;
+      const selectedTier = formData.tier;
+      const amount = event[`${selectedTier}_price`];
+      const tierName = event[`${selectedTier}_name`];
 
-      // Insert request into database
+      const requestData = {
+        event_id: event.id,
+        requester_name: formData.requester_name,
+        song: formData.song,
+        artist: formData.artist,
+        message: formData.message || null,
+        tier_name: tierName,
+        amount: (!event.require_payment || hostCodeValid) ? 0 : amount,
+        payment_status: (!event.require_payment || hostCodeValid) ? 'free' : 'pending',
+        request_status: 'pending',
+        used_host_code: hostCodeValid
+      };
+
       const { data, error: insertError } = await supabase
         .from('requests')
-        .insert([
-          {
-            event_id: event.id,
-            requester_name: formData.name,
-            requester_email: formData.email || null,
-            song: formData.song,
-            artist: formData.artist,
-            message: formData.message || null,
-            tier: formData.tier,
-            amount: amount,
-            payment_status: 'pending',
-            request_status: 'pending',
-            queue_position: 999
-          }
-        ])
+        .insert([requestData])
         .select();
 
       if (insertError) throw insertError;
 
-      // Success - redirect to queue
-      router.push(`/event/${code}?submitted=true`);
+      // Decrement host code uses if used
+      if (hostCodeValid) {
+        await supabase
+          .from('events')
+          .update({ 
+            host_code_uses_remaining: event.host_code_uses_remaining - 1 
+          })
+          .eq('id', event.id);
+      }
+
+      setSuccess(true);
+      
+      setTimeout(() => {
+        router.push(`/event/${code}`);
+      }, 2000);
 
     } catch (err) {
       setError(err.message);
-      setSubmitting(false);
     }
   };
 
@@ -103,428 +125,366 @@ export default function RequestForm() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0b0b0d 0%, #1a1a2e 100%)',
+        background: '#0b0b0d',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: 'white',
-        fontFamily: '-apple-system, sans-serif'
+        color: 'white'
       }}>
         Loading...
       </div>
     );
   }
 
-  if (error || !event) {
+  if (success) {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0b0b0d 0%, #1a1a2e 100%)',
+        background: '#0b0b0d',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: 'white',
-        fontFamily: '-apple-system, sans-serif',
-        padding: '20px',
-        textAlign: 'center'
+        padding: '20px'
       }}>
-        <div>
-          <h1 style={{ fontSize: '48px', marginBottom: '20px' }}>😕</h1>
-          <h2 style={{ color: '#ff6b35' }}>Event Not Found</h2>
+        <div style={{
+          background: 'rgba(0,255,136,0.1)',
+          border: '2px solid #00ff88',
+          padding: '40px',
+          borderRadius: '20px',
+          textAlign: 'center',
+          maxWidth: '400px'
+        }}>
+          <h1 style={{ 
+            color: '#00ff88',
+            marginBottom: '15px',
+            fontSize: '28px'
+          }}>
+            Request Submitted!
+          </h1>
+          <p style={{ 
+            color: 'rgba(255,255,255,0.8)',
+            marginBottom: '10px'
+          }}>
+            Your song has been added to the queue.
+          </p>
+          <p style={{ 
+            color: 'rgba(255,255,255,0.6)',
+            fontSize: '14px'
+          }}>
+            Redirecting to queue...
+          </p>
         </div>
       </div>
     );
   }
 
+  const isFreeEvent = !event.require_payment;
+  const isFreeRequest = isFreeEvent || hostCodeValid;
+
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0b0b0d 0%, #1a1a2e 100%)',
+      background: 'linear-gradient(135deg, #0b0b0d 0%, #1a0a1f 100%)',
       color: '#eef',
       padding: '20px',
       fontFamily: '-apple-system, sans-serif'
     }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '600px', margin: '0 auto', paddingTop: '40px' }}>
         
-        <div style={{ marginBottom: '30px' }}>
-          <button
-            onClick={() => router.push(`/event/${code}`)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#00f5ff',
-              cursor: 'pointer',
-              fontSize: '14px',
-              padding: '0',
-              marginBottom: '20px'
-            }}
-          >
-            ← Back to Queue
-          </button>
-          
-          <h1 style={{ 
-            color: '#ff6b35',
-            margin: '0 0 10px 0',
-            fontSize: '32px'
+        <div style={{
+          textAlign: 'center',
+          marginBottom: '30px'
+        }}>
+          <h1 style={{
+            fontSize: '32px',
+            fontWeight: '700',
+            background: 'linear-gradient(135deg, #ff006e, #00f5ff)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            marginBottom: '10px'
           }}>
-          Request a Song
+            Request a Song
           </h1>
-          <p style={{ 
+          <p style={{
             color: 'rgba(255,255,255,0.6)',
-            margin: '0',
-            fontSize: '14px'
+            fontSize: '16px'
           }}>
-            {event.event_name} • {event.venue}
+            {event.event_name}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          
-          <div style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '12px',
-            padding: '25px',
-            marginBottom: '20px'
-          }}>
+        <div style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '20px',
+          padding: '30px',
+          backdropFilter: 'blur(10px)'
+        }}>
+          <form onSubmit={handleSubmit}>
             
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                color: 'rgba(255,255,255,0.8)',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}>
-                Your Name *
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="Sarah"
-                required
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '12px',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  fontSize: '16px'
-                }}
-              />
-            </div>
+            <input
+              type="text"
+              placeholder="Your Name"
+              value={formData.requester_name}
+              onChange={(e) => setFormData({...formData, requester_name: e.target.value})}
+              required
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '14px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '10px',
+                color: 'white',
+                fontSize: '16px',
+                marginBottom: '15px'
+              }}
+            />
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                color: 'rgba(255,255,255,0.8)',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '600'
+            <input
+              type="text"
+              placeholder="Song Title"
+              value={formData.song}
+              onChange={(e) => setFormData({...formData, song: e.target.value})}
+              required
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '14px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '10px',
+                color: 'white',
+                fontSize: '16px',
+                marginBottom: '15px'
+              }}
+            />
+
+            <input
+              type="text"
+              placeholder="Artist"
+              value={formData.artist}
+              onChange={(e) => setFormData({...formData, artist: e.target.value})}
+              required
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '14px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '10px',
+                color: 'white',
+                fontSize: '16px',
+                marginBottom: '15px'
+              }}
+            />
+
+            <textarea
+              placeholder="Message or dedication (optional)"
+              value={formData.message}
+              onChange={(e) => setFormData({...formData, message: e.target.value})}
+              rows="3"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '14px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '10px',
+                color: 'white',
+                fontSize: '16px',
+                marginBottom: '15px',
+                resize: 'vertical',
+                fontFamily: '-apple-system, sans-serif'
+              }}
+            />
+
+            {/* Host Code Section */}
+            {event.host_code && (
+              <div style={{
+                padding: '15px',
+                background: 'rgba(255,215,0,0.05)',
+                border: `1px solid ${hostCodeValid ? '#00ff88' : 'rgba(255,215,0,0.2)'}`,
+                borderRadius: '10px',
+                marginBottom: '15px'
               }}>
-                Email (Optional)
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="sarah@example.com"
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '12px',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  fontSize: '16px'
-                }}
-              />
-              <p style={{
-                fontSize: '12px',
-                color: 'rgba(255,255,255,0.5)',
-                marginTop: '6px'
+                <label style={{
+                  display: 'block',
+                  color: 'rgba(255,255,255,0.7)',
+                  fontSize: '14px',
+                  marginBottom: '8px'
+                }}>
+                  Host Code (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter host code for free request"
+                  value={formData.host_code}
+                  onChange={(e) => setFormData({...formData, host_code: e.target.value.toUpperCase()})}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '12px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '16px'
+                  }}
+                />
+                {hostCodeValid && (
+                  <p style={{
+                    color: '#00ff88',
+                    fontSize: '13px',
+                    marginTop: '8px',
+                    marginBottom: '0'
+                  }}>
+                    Valid code! This request is free. ({event.host_code_uses_remaining - 1} uses remaining after this)
+                  </p>
+                )}
+                {hostCodeError && (
+                  <p style={{
+                    color: '#ff6b6b',
+                    fontSize: '13px',
+                    marginTop: '8px',
+                    marginBottom: '0'
+                  }}>
+                    {hostCodeError}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Pricing Tiers - Only show if payment required and no valid host code */}
+            {event.require_payment && !hostCodeValid && (
+              <div style={{
+                padding: '15px',
+                background: 'rgba(255,0,110,0.05)',
+                border: '1px solid rgba(255,0,110,0.2)',
+                borderRadius: '10px',
+                marginBottom: '20px'
               }}>
-                For payment confirmation notifications
+                <label style={{
+                  display: 'block',
+                  color: 'rgba(255,255,255,0.7)',
+                  fontSize: '14px',
+                  marginBottom: '12px'
+                }}>
+                  Select Tier
+                </label>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {['tier_1', 'tier_2', 'tier_3'].map(tier => (
+                    <label
+                      key={tier}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '12px',
+                        background: formData.tier === tier ? 'rgba(255,0,110,0.2)' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${formData.tier === tier ? '#ff006e' : 'rgba(255,255,255,0.1)'}`,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="tier"
+                        value={tier}
+                        checked={formData.tier === tier}
+                        onChange={(e) => setFormData({...formData, tier: e.target.value})}
+                        style={{ marginRight: '10px' }}
+                      />
+                      <span style={{
+                        flex: 1,
+                        color: 'white',
+                        fontWeight: '600'
+                      }}>
+                        {event[`${tier}_name`]}
+                      </span>
+                      <span style={{
+                        color: '#00f5ff',
+                        fontWeight: '700'
+                      }}>
+                        ${event[`${tier}_price`]}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Free Event Message */}
+            {isFreeEvent && !event.host_code && (
+              <div style={{
+                padding: '15px',
+                background: 'rgba(0,255,136,0.1)',
+                border: '1px solid rgba(0,255,136,0.3)',
+                borderRadius: '10px',
+                marginBottom: '20px',
+                textAlign: 'center'
+              }}>
+                <p style={{
+                  color: '#00ff88',
+                  fontSize: '14px',
+                  margin: '0'
+                }}>
+                  This event has free requests!
+                </p>
+              </div>
+            )}
+
+            {error && (
+              <p style={{ 
+                color: '#ff6b6b',
+                marginBottom: '15px',
+                fontSize: '14px'
+              }}>
+                {error}
               </p>
-            </div>
+            )}
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                color: 'rgba(255,255,255,0.8)',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}>
-                Song Title *
-              </label>
-              <input
-                type="text"
-                name="song"
-                value={formData.song}
-                onChange={handleChange}
-                placeholder="Sandstorm"
-                required
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '12px',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  fontSize: '16px'
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                color: 'rgba(255,255,255,0.8)',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}>
-                Artist *
-              </label>
-              <input
-                type="text"
-                name="artist"
-                value={formData.artist}
-                onChange={handleChange}
-                placeholder="Darude"
-                required
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '12px',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  fontSize: '16px'
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '0' }}>
-              <label style={{
-                display: 'block',
-                color: 'rgba(255,255,255,0.8)',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}>
-                Special Message (Optional)
-              </label>
-              <textarea
-                name="message"
-                value={formData.message}
-                onChange={handleChange}
-                placeholder="Happy birthday! 🎉"
-                rows={3}
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '12px',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  fontSize: '16px',
-                  resize: 'vertical',
-                  fontFamily: '-apple-system, sans-serif'
-                }}
-              />
-            </div>
-          </div>
-
-          <div style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '12px',
-            padding: '25px',
-            marginBottom: '20px'
-          }}>
-            <h3 style={{ 
-              color: '#fff',
-              marginBottom: '15px',
-              fontSize: '18px'
-            }}>
-              Select Tier
-            </h3>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '15px',
-                background: formData.tier === 'standard' ? 'rgba(0,245,255,0.1)' : 'rgba(255,255,255,0.03)',
-                border: formData.tier === 'standard' ? '2px solid #00f5ff' : '2px solid rgba(255,255,255,0.1)',
-                borderRadius: '10px',
+            <button
+              type="submit"
+              style={{
+                width: '100%',
+                padding: '16px',
+                background: isFreeRequest 
+                  ? 'linear-gradient(135deg, #00ff88, #00cc6a)'
+                  : 'linear-gradient(135deg, #ff006e, #ff4d8f)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '18px',
+                fontWeight: '700',
                 cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}>
-                <input
-                  type="radio"
-                  name="tier"
-                  value="standard"
-                  checked={formData.tier === 'standard'}
-                  onChange={handleChange}
-                  style={{ marginRight: '12px', cursor: 'pointer' }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: '600', color: '#fff', marginBottom: '4px' }}>
-                    Standard Request
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
-                    Added to queue
-                  </div>
-                </div>
-                <div style={{ 
-                  fontSize: '20px',
-                  fontWeight: '700',
-                  color: '#00f5ff'
-                }}>
-                  ${event.standard_price}
-                </div>
-              </label>
+                boxShadow: isFreeRequest
+                  ? '0 4px 20px rgba(0,255,136,0.4)'
+                  : '0 4px 20px rgba(255,0,110,0.4)'
+              }}
+            >
+              {isFreeRequest ? 'Submit Free Request' : `Submit Request - $${event[`${formData.tier}_price`]}`}
+            </button>
+          </form>
 
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '15px',
-                background: formData.tier === 'skip_3' ? 'rgba(255,0,110,0.1)' : 'rgba(255,255,255,0.03)',
-                border: formData.tier === 'skip_3' ? '2px solid #ff006e' : '2px solid rgba(255,255,255,0.1)',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}>
-                <input
-                  type="radio"
-                  name="tier"
-                  value="skip_3"
-                  checked={formData.tier === 'skip_3'}
-                  onChange={handleChange}
-                  style={{ marginRight: '12px', cursor: 'pointer' }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: '600', color: '#fff', marginBottom: '4px' }}>
-                    Skip 3 Songs
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
-                    Move up in the queue
-                  </div>
-                </div>
-                <div style={{ 
-                  fontSize: '20px',
-                  fontWeight: '700',
-                  color: '#ff006e'
-                }}>
-                  ${event.skip_3_price}
-                </div>
-              </label>
-
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '15px',
-                background: formData.tier === 'play_next' ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.03)',
-                border: formData.tier === 'play_next' ? '2px solid #00ff88' : '2px solid rgba(255,255,255,0.1)',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}>
-                <input
-                  type="radio"
-                  name="tier"
-                  value="play_next"
-                  checked={formData.tier === 'play_next'}
-                  onChange={handleChange}
-                  style={{ marginRight: '12px', cursor: 'pointer' }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: '600', color: '#fff', marginBottom: '4px' }}>
-                    Play Next ⚡
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
-                    Plays after current song
-                  </div>
-                </div>
-                <div style={{ 
-                  fontSize: '20px',
-                  fontWeight: '700',
-                  color: '#00ff88'
-                }}>
-                  ${event.play_next_price}
-                </div>
-              </label>
-            </div>
-
-            <div style={{
+          <button
+            onClick={() => router.push(`/event/${code}`)}
+            style={{
+              width: '100%',
               marginTop: '15px',
               padding: '12px',
               background: 'rgba(255,255,255,0.05)',
-              borderRadius: '8px',
-              fontSize: '13px',
-              color: 'rgba(255,255,255,0.6)'
-            }}>
-              ℹ️ Payment held until DJ approves your request
-            </div>
-          </div>
-
-          {error && (
-            <div style={{
-              padding: '15px',
-              background: 'rgba(255,0,0,0.1)',
-              border: '1px solid rgba(255,0,0,0.3)',
-              borderRadius: '8px',
-              color: '#ff6b6b',
-              marginBottom: '20px',
-              fontSize: '14px'
-            }}>
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              width: '100%',
-              padding: '16px',
-              background: submitting 
-                ? 'rgba(255,255,255,0.1)' 
-                : 'linear-gradient(135deg, #ff006e, #ff4d8f)',
-              color: submitting ? 'rgba(255,255,255,0.5)' : 'white',
-              border: 'none',
-              borderRadius: '12px',
-              fontSize: '18px',
-              fontWeight: '700',
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              boxShadow: submitting ? 'none' : '0 0 30px rgba(255,0,110,0.5)'
+              color: 'rgba(255,255,255,0.7)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '10px',
+              fontSize: '14px',
+              cursor: 'pointer'
             }}
           >
-            {submitting ? 'Submitting...' : 'Submit Request (Free for Testing)'}
+            Back to Queue
           </button>
-
-          <p style={{
-            textAlign: 'center',
-            fontSize: '12px',
-            color: 'rgba(255,255,255,0.5)',
-            marginTop: '15px'
-          }}>
-            Stripe payment integration coming next
-          </p>
-        </form>
+        </div>
       </div>
     </div>
   );
