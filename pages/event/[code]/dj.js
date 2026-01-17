@@ -51,7 +51,7 @@ export default function DJPanel() {
       .from('requests')
       .select('*')
       .eq('event_id', event.id)
-      .order('submitted_at', { ascending: false });
+      .order('submitted_at', { ascending: true });
 
     setRequests(data || []);
   };
@@ -86,31 +86,6 @@ export default function DJPanel() {
         payment_status: 'cancelled',
         rejection_reason: 'Song not available'
       })
-      .eq('id', requestId);
-
-    if (!error) loadRequests();
-  };
-
-  const handleMarkPlaying = async (requestId) => {
-    await supabase
-      .from('requests')
-      .update({ request_status: 'playing' })
-      .eq('event_id', event.id)
-      .eq('request_status', 'playing')
-      .neq('id', requestId);
-
-    const { error } = await supabase
-      .from('requests')
-      .update({ request_status: 'playing' })
-      .eq('id', requestId);
-
-    if (!error) loadRequests();
-  };
-
-  const handleMarkPlayed = async (requestId) => {
-    const { error } = await supabase
-      .from('requests')
-      .update({ request_status: 'played' })
       .eq('id', requestId);
 
     if (!error) loadRequests();
@@ -218,8 +193,6 @@ export default function DJPanel() {
 
   const pending = requests.filter(r => r.request_status === 'pending');
   const approved = requests.filter(r => r.request_status === 'approved');
-  const playing = requests.find(r => r.request_status === 'playing');
-  const played = requests.filter(r => r.request_status === 'played');
   const rejected = requests.filter(r => r.request_status === 'rejected');
 
   return (
@@ -283,18 +256,19 @@ export default function DJPanel() {
             background: 'rgba(255,255,255,0.03)',
             border: '1px solid rgba(255,0,110,0.2)',
             borderRadius: '12px',
-            padding: '20px'
+            padding: '20px',
+            gridColumn: 'span 2'
           }}>
             <h2 style={{ 
               fontSize: '18px',
               marginBottom: '15px',
               color: '#ff006e'
             }}>
-              ⏳ Pending ({pending.length})
+              🎵 Song Requests ({pending.length})
             </h2>
             <div style={{ 
-              display: 'flex',
-              flexDirection: 'column',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
               gap: '12px',
               maxHeight: '600px',
               overflowY: 'auto'
@@ -312,7 +286,8 @@ export default function DJPanel() {
                   <div style={{ 
                     fontWeight: '600',
                     marginBottom: '5px',
-                    color: '#fff'
+                    color: '#fff',
+                    fontSize: '16px'
                   }}>
                     {request.song}
                   </div>
@@ -351,33 +326,33 @@ export default function DJPanel() {
                       onClick={() => handleApprove(request.id)}
                       style={{
                         flex: 1,
-                        padding: '8px',
+                        padding: '10px',
                         background: '#00ff88',
                         color: '#0a0a0a',
                         border: 'none',
                         borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: '600',
+                        fontSize: '14px',
+                        fontWeight: '700',
                         cursor: 'pointer'
                       }}
                     >
-                      ✓ Approve
+                      ✓ Played
                     </button>
                     <button
                       onClick={() => handleReject(request.id)}
                       style={{
                         flex: 1,
-                        padding: '8px',
+                        padding: '10px',
                         background: 'rgba(255,0,0,0.2)',
                         color: '#ff6b6b',
                         border: '1px solid rgba(255,0,0,0.3)',
                         borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: '600',
+                        fontSize: '14px',
+                        fontWeight: '700',
                         cursor: 'pointer'
                       }}
                     >
-                      ✗ Reject
+                      ✗ Skip
                     </button>
                   </div>
                 </div>
@@ -386,134 +361,10 @@ export default function DJPanel() {
                 <p style={{ 
                   textAlign: 'center',
                   color: 'rgba(255,255,255,0.4)',
-                  padding: '20px'
+                  padding: '20px',
+                  gridColumn: '1 / -1'
                 }}>
                   No pending requests
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Queue */}
-          <div style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(0,245,255,0.2)',
-            borderRadius: '12px',
-            padding: '20px'
-          }}>
-            <h2 style={{ 
-              fontSize: '18px',
-              marginBottom: '15px',
-              color: '#00f5ff'
-            }}>
-              🎵 Queue ({approved.length + (playing ? 1 : 0)})
-            </h2>
-            <div style={{ 
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              maxHeight: '600px',
-              overflowY: 'auto'
-            }}>
-              {playing && (
-                <div
-                  style={{
-                    background: 'rgba(0,255,136,0.1)',
-                    padding: '15px',
-                    borderRadius: '10px',
-                    border: '2px solid #00ff88'
-                  }}
-                >
-                  <div style={{ 
-                    fontSize: '12px',
-                    color: '#00ff88',
-                    fontWeight: '600',
-                    marginBottom: '5px'
-                  }}>
-                    ▶️ NOW PLAYING
-                  </div>
-                  <div style={{ 
-                    fontWeight: '600',
-                    marginBottom: '5px',
-                    color: '#fff'
-                  }}>
-                    {playing.song}
-                  </div>
-                  <div style={{ 
-                    fontSize: '14px',
-                    color: 'rgba(255,255,255,0.7)',
-                    marginBottom: '10px'
-                  }}>
-                    {playing.artist}
-                  </div>
-                  <button
-                    onClick={() => handleMarkPlayed(playing.id)}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      background: 'rgba(255,255,255,0.1)',
-                      color: 'white',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ✓ Mark as Played
-                  </button>
-                </div>
-              )}
-
-              {approved.map((request, index) => (
-                <div
-                  key={request.id}
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    padding: '15px',
-                    borderRadius: '10px',
-                    border: '1px solid rgba(255,255,255,0.1)'
-                  }}
-                >
-                  <div style={{ 
-                    fontWeight: '600',
-                    marginBottom: '5px',
-                    color: '#fff'
-                  }}>
-                    {index + 1}. {request.song}
-                  </div>
-                  <div style={{ 
-                    fontSize: '14px',
-                    color: 'rgba(255,255,255,0.7)',
-                    marginBottom: '10px'
-                  }}>
-                    {request.artist}
-                  </div>
-                  <button
-                    onClick={() => handleMarkPlaying(request.id)}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      background: 'rgba(0,245,255,0.2)',
-                      color: '#00f5ff',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ▶️ Play This
-                    </button>
-                </div>
-              ))}
-              {approved.length === 0 && !playing && (
-                <p style={{ 
-                  textAlign: 'center',
-                  color: 'rgba(255,255,255,0.4)',
-                  padding: '20px'
-                }}>
-                  Queue is empty
                 </p>
               )}
             </div>
@@ -546,11 +397,13 @@ export default function DJPanel() {
                   padding: '10px',
                   background: 'rgba(0,255,136,0.1)',
                   borderRadius: '8px',
-                  marginBottom: '5px'
+                  marginBottom: '5px',
+                  fontSize: '14px',
+                  color: '#00ff88'
                 }}>
-                  ✓ Played ({played.length})
+                  ✓ Played ({approved.length})
                 </summary>
-                {played.map(request => (
+                {approved.map(request => (
                   <div
                     key={request.id}
                     style={{
@@ -570,9 +423,11 @@ export default function DJPanel() {
                   cursor: 'pointer',
                   padding: '10px',
                   background: 'rgba(255,0,0,0.1)',
-                  borderRadius: '8px'
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  color: '#ff6b6b'
                 }}>
-                  ✗ Rejected ({rejected.length})
+                  ✗ Skipped ({rejected.length})
                 </summary>
                 {rejected.map(request => (
                   <div
