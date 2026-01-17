@@ -130,7 +130,7 @@ export default function DJPanel() {
             marginBottom: '10px',
             textAlign: 'center'
           }}>
-            🎛️ DJ Control Panel
+            DJ Control Panel
           </h1>
           <p style={{ 
             color: 'rgba(255,255,255,0.6)',
@@ -203,7 +203,7 @@ export default function DJPanel() {
       padding: '20px',
       fontFamily: '-apple-system, sans-serif'
     }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
         <div style={{
           display: 'flex',
@@ -219,7 +219,7 @@ export default function DJPanel() {
               margin: '0 0 5px 0',
               fontSize: '28px'
             }}>
-              🎛️ DJ Control Panel
+              DJ Control Panel
             </h1>
             <p style={{ 
               color: '#aaa',
@@ -229,25 +229,39 @@ export default function DJPanel() {
               {event.event_name} • {event.venue}
             </p>
           </div>
-          <button
-            onClick={() => router.push(`/event/${code}`)}
-            style={{
-              padding: '10px 20px',
-              background: 'rgba(0,245,255,0.2)',
-              color: '#00f5ff',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            View Queue
-          </button>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {event.host_code && (
+              <div style={{
+                padding: '8px 15px',
+                background: 'rgba(255,215,0,0.1)',
+                border: '1px solid rgba(255,215,0,0.3)',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#FFD700'
+              }}>
+                Host Code: {event.host_code_uses_remaining}/{event.host_code_uses_total} uses left
+              </div>
+            )}
+            <button
+              onClick={() => router.push(`/event/${code}`)}
+              style={{
+                padding: '10px 20px',
+                background: 'rgba(0,245,255,0.2)',
+                color: '#00f5ff',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              View Queue
+            </button>
+          </div>
         </div>
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+          gridTemplateColumns: '2fr 1fr',
           gap: '20px'
         }}>
           
@@ -256,20 +270,19 @@ export default function DJPanel() {
             background: 'rgba(255,255,255,0.03)',
             border: '1px solid rgba(255,0,110,0.2)',
             borderRadius: '12px',
-            padding: '20px',
-            gridColumn: 'span 2'
+            padding: '20px'
           }}>
             <h2 style={{ 
               fontSize: '18px',
               marginBottom: '15px',
               color: '#ff006e'
             }}>
-              🎵 Song Requests ({pending.length})
+              Song Requests ({pending.length})
             </h2>
             <div style={{ 
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-              gap: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
               maxHeight: '600px',
               overflowY: 'auto'
             }}>
@@ -277,82 +290,110 @@ export default function DJPanel() {
                 <div
                   key={request.id}
                   style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    padding: '15px',
-                    borderRadius: '10px',
-                    border: '1px solid rgba(255,255,255,0.1)'
+                    background: request.used_host_code
+                      ? `${event.host_code_color}15`
+                      : 'rgba(255,255,255,0.05)',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: request.used_host_code
+                      ? `1px solid ${event.host_code_color}`
+                      : '1px solid rgba(255,255,255,0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
                   }}
                 >
-                  <div style={{ 
-                    fontWeight: '600',
-                    marginBottom: '5px',
-                    color: '#fff',
-                    fontSize: '16px'
-                  }}>
-                    {request.song}
-                  </div>
-                  <div style={{ 
-                    fontSize: '14px',
-                    color: 'rgba(255,255,255,0.7)',
-                    marginBottom: '5px'
-                  }}>
-                    {request.artist}
-                  </div>
-                  <div style={{ 
-                    fontSize: '13px',
-                    color: 'rgba(255,255,255,0.6)',
-                    marginBottom: '10px'
-                  }}>
-                    👤 {request.requester_name} • ${request.amount}
-                  </div>
-                  {request.message && (
-                    <div style={{
-                      fontSize: '13px',
-                      fontStyle: 'italic',
-                      color: 'rgba(255,255,255,0.6)',
-                      marginBottom: '10px',
-                      padding: '8px',
-                      background: 'rgba(255,255,255,0.03)',
-                      borderRadius: '6px'
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ 
+                      fontWeight: '600',
+                      marginBottom: '3px',
+                      color: '#fff',
+                      fontSize: '15px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
                     }}>
-                      💬 "{request.message}"
+                      {request.song}
                     </div>
-                  )}
+                    <div style={{ 
+                      fontSize: '13px',
+                      color: 'rgba(255,255,255,0.7)',
+                      marginBottom: '3px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {request.artist}
+                    </div>
+                    <div style={{ 
+                      fontSize: '12px',
+                      color: 'rgba(255,255,255,0.6)'
+                    }}>
+                      {request.requester_name} • ${request.amount}
+                      {request.used_host_code && (
+                        <span style={{
+                          marginLeft: '8px',
+                          padding: '2px 6px',
+                          background: `${event.host_code_color}30`,
+                          borderRadius: '3px',
+                          fontSize: '10px',
+                          fontWeight: '600',
+                          color: event.host_code_color
+                        }}>
+                          HOST
+                        </span>
+                      )}
+                    </div>
+                    {request.message && (
+                      <div style={{
+                        fontSize: '12px',
+                        fontStyle: 'italic',
+                        color: 'rgba(255,255,255,0.5)',
+                        marginTop: '5px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        "{request.message}"
+                      </div>
+                    )}
+                  </div>
                   <div style={{ 
                     display: 'flex',
-                    gap: '8px'
+                    gap: '6px',
+                    flexShrink: 0
                   }}>
                     <button
                       onClick={() => handleApprove(request.id)}
                       style={{
-                        flex: 1,
-                        padding: '10px',
+                        padding: '6px 12px',
                         background: '#00ff88',
                         color: '#0a0a0a',
                         border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '14px',
+                        borderRadius: '5px',
+                        fontSize: '12px',
                         fontWeight: '700',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
                       }}
                     >
-                      ✓ Played
+                      Played
                     </button>
                     <button
                       onClick={() => handleReject(request.id)}
                       style={{
-                        flex: 1,
-                        padding: '10px',
+                        padding: '6px 12px',
                         background: 'rgba(255,0,0,0.2)',
                         color: '#ff6b6b',
                         border: '1px solid rgba(255,0,0,0.3)',
-                        borderRadius: '6px',
-                        fontSize: '14px',
+                        borderRadius: '5px',
+                        fontSize: '12px',
                         fontWeight: '700',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
                       }}
                     >
-                      ✗ Skip
+                      Skip
                     </button>
                   </div>
                 </div>
@@ -361,8 +402,7 @@ export default function DJPanel() {
                 <p style={{ 
                   textAlign: 'center',
                   color: 'rgba(255,255,255,0.4)',
-                  padding: '20px',
-                  gridColumn: '1 / -1'
+                  padding: '20px'
                 }}>
                   No pending requests
                 </p>
@@ -382,7 +422,7 @@ export default function DJPanel() {
               marginBottom: '15px',
               color: '#aaa'
             }}>
-              📋 History
+              History
             </h2>
             <div style={{ 
               display: 'flex',
@@ -401,21 +441,23 @@ export default function DJPanel() {
                   fontSize: '14px',
                   color: '#00ff88'
                 }}>
-                  ✓ Played ({approved.length})
+                  Played ({approved.length})
                 </summary>
-                {approved.map(request => (
-                  <div
-                    key={request.id}
-                    style={{
-                      padding: '10px',
-                      fontSize: '13px',
-                      color: 'rgba(255,255,255,0.6)',
-                      borderBottom: '1px solid rgba(255,255,255,0.05)'
-                    }}
-                  >
-                    {request.song} - {request.artist}
-                  </div>
-                ))}
+                <div style={{ paddingLeft: '10px' }}>
+                  {approved.map(request => (
+                    <div
+                      key={request.id}
+                      style={{
+                        padding: '8px',
+                        fontSize: '12px',
+                        color: 'rgba(255,255,255,0.6)',
+                        borderBottom: '1px solid rgba(255,255,255,0.05)'
+                      }}
+                    >
+                      {request.song} - {request.artist}
+                    </div>
+                  ))}
+                </div>
               </details>
 
               <details>
@@ -427,21 +469,23 @@ export default function DJPanel() {
                   fontSize: '14px',
                   color: '#ff6b6b'
                 }}>
-                  ✗ Skipped ({rejected.length})
+                  Skipped ({rejected.length})
                 </summary>
-                {rejected.map(request => (
-                  <div
-                    key={request.id}
-                    style={{
-                      padding: '10px',
-                      fontSize: '13px',
-                      color: 'rgba(255,255,255,0.6)',
-                      borderBottom: '1px solid rgba(255,255,255,0.05)'
-                    }}
-                  >
-                    {request.song} - {request.artist}
-                  </div>
-                ))}
+                <div style={{ paddingLeft: '10px' }}>
+                  {rejected.map(request => (
+                    <div
+                      key={request.id}
+                      style={{
+                        padding: '8px',
+                        fontSize: '12px',
+                        color: 'rgba(255,255,255,0.6)',
+                        borderBottom: '1px solid rgba(255,255,255,0.05)'
+                      }}
+                    >
+                      {request.song} - {request.artist}
+                    </div>
+                  ))}
+                </div>
               </details>
             </div>
           </div>
