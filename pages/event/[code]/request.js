@@ -207,6 +207,7 @@ export default function RequestForm() {
                 required
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '12px',
                   background: 'rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.1)',
@@ -235,6 +236,7 @@ export default function RequestForm() {
                 placeholder="sarah@example.com"
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '12px',
                   background: 'rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.1)',
@@ -271,6 +273,7 @@ export default function RequestForm() {
                 required
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '12px',
                   background: 'rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.1)',
@@ -300,6 +303,7 @@ export default function RequestForm() {
                 required
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '12px',
                   background: 'rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.1)',
@@ -328,6 +332,7 @@ export default function RequestForm() {
                 rows={3}
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '12px',
                   background: 'rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.1)',
