@@ -167,7 +167,7 @@ export default function RequestForm() {
             margin: '0 0 10px 0',
             fontSize: '32px'
           }}>
-            🎤 Request a Song
+          Request a Song
           </h1>
           <p style={{ 
             color: 'rgba(255,255,255,0.6)',
