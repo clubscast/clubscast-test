@@ -37,12 +37,12 @@ export default function EventQueue() {
 
       setEvent(eventData);
 
-      const { data: requestsData } = await supabase
-        .from('requests')
-        .select('*')
-        .eq('event_id', eventData.id)
-        .in('request_status', ['approved', 'playing', 'played'])
-        .order('queue_position', { ascending: true });
+     const { data } = await supabase
+    .from('requests')
+    .select('*')
+    .eq('event_id', event.id)
+    .eq('request_status', 'pending')
+    .order('submitted_at', { ascending: true });
 
       setRequests(requestsData || []);
       setLoading(false);
@@ -141,7 +141,7 @@ export default function EventQueue() {
               boxShadow: '0 0 30px rgba(255,0,110,0.5)'
             }}
           >
-            🎤 Request a Song
+            Request a Song
           </button>
         </div>
 
@@ -152,7 +152,7 @@ export default function EventQueue() {
               marginBottom: '15px',
               color: '#fff'
             }}>
-              ▶️ Now Playing
+               Now Playing
             </h2>
             <div style={{
               background: 'rgba(0,255,136,0.08)',
@@ -181,7 +181,7 @@ export default function EventQueue() {
                 fontSize: '14px',
                 opacity: 0.7
               }}>
-                👤 Requested by {nowPlaying.requester_name}
+                 Requested by {nowPlaying.requester_name}
               </div>
               {nowPlaying.message && (
                 <div style={{
@@ -193,7 +193,7 @@ export default function EventQueue() {
                   fontStyle: 'italic',
                   color: 'rgba(255,255,255,0.8)'
                 }}>
-                  💬 "{nowPlaying.message}"
+                   "{nowPlaying.message}"
                 </div>
               )}
             </div>
@@ -287,7 +287,7 @@ export default function EventQueue() {
               fontSize: '48px',
               marginBottom: '20px'
             }}>
-              🎵
+              
             </h2>
             <h3 style={{ 
               fontSize: '24px',
