@@ -318,14 +318,3 @@ export default function EventQueue() {
     </div>
   );
 }
-```
-
-4. **Commit changes**
-
----
-
-**Now the file structure is:**
-```
-pages/
-  event/
-    [code].js  ✅ Correct!
