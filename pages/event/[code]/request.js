@@ -490,7 +490,7 @@ function RequestFormContent({ eventCode }) {
               </div>
             )}
 
-            {/* DEBUG INFO */}
+          {/* DEBUG INFO */}
             <div style={{
               padding: '10px',
               background: 'rgba(255,255,0,0.1)',
