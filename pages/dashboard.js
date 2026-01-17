@@ -9,7 +9,7 @@ export default function Dashboard() {
     }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
         <h1 style={{ color: '#ff6b35', marginBottom: '30px' }}>
-          🎛️ DJ Dashboard
+          DJ Dashboard
         </h1>
         <div style={{
           background: 'rgba(255,255,255,0.05)',
