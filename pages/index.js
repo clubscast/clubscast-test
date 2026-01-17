@@ -1,30 +1,24 @@
-
 export default function Home() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 50%, #0a1a1a 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontFamily: '-apple-system, sans-serif'
+      fontFamily: '-apple-system, sans-serif',
+      padding: '20px'
     }}>
       <div style={{
-        background: 'white',
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,0,110,0.2)',
         padding: '60px 40px',
         borderRadius: '20px',
         textAlign: 'center',
         maxWidth: '600px',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+        boxShadow: '0 0 60px rgba(255,0,110,0.3)'
       }}>
-        <h1 style={{
-          fontSize: '48px',
-          margin: '0 0 20px 0',
-          background: 'linear-gradient(135deg, #667eea, #764ba2)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent'
-
-        {/* Logo */}
+        
         <div style={{ marginBottom: '30px' }}>
           <img 
             src="/logo.png" 
@@ -32,28 +26,28 @@ export default function Home() {
             style={{
               maxWidth: '300px',
               width: '100%',
-              height: 'auto',
-              filter: 'drop-shadow(0 0 30px rgba(255,0,110,0.6))'
+              height: 'auto'
             }}
           />
         </div>
-        }}>
-          ClubsCast
-        </h1>
+
         <p style={{
           fontSize: '24px',
-          color: '#666',
-          marginBottom: '30px'
+          color: '#00f5ff',
+          marginBottom: '15px',
+          fontWeight: '600'
         }}>
-          DJ Song Request System
+          Remote DJ Events
         </p>
+        
         <p style={{
           fontSize: '16px',
-          color: '#999',
+          color: 'rgba(255,255,255,0.6)',
           marginBottom: '40px'
         }}>
-          Test deployment successful! ✅
+          Live DJ sets streamed to your private event.
         </p>
+
         <div style={{
           display: 'flex',
           gap: '15px',
@@ -61,22 +55,23 @@ export default function Home() {
           flexWrap: 'wrap'
         }}>
           <a href="/dashboard" style={{
-            padding: '14px 30px',
-            background: '#667eea',
+            padding: '16px 32px',
+            background: '#ff006e',
             color: 'white',
             textDecoration: 'none',
-            borderRadius: '10px',
-            fontWeight: '600'
+            borderRadius: '12px',
+            fontWeight: '700'
           }}>
             DJ Dashboard
           </a>
+          
           <a href="/test-event" style={{
-            padding: '14px 30px',
-            background: '#764ba2',
-            color: 'white',
+            padding: '16px 32px',
+            background: '#00f5ff',
+            color: '#0a0a0a',
             textDecoration: 'none',
-            borderRadius: '10px',
-            fontWeight: '600'
+            borderRadius: '12px',
+            fontWeight: '700'
           }}>
             View Test Event
           </a>
