@@ -235,7 +235,7 @@ export default function EventQueue() {
                   </div>
                   <div style={{ 
                     fontSize: '16px',
-                    opacity: 0.9',
+                    opacity: 0.9,
                     marginBottom: '8px',
                     color: '#00f5ff'
                   }}>
