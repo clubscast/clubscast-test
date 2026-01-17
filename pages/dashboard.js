@@ -57,3 +57,7 @@ const generateQR = async (eventCode) => {
       alert('Error generating QR code: ' + err.message);
     }
   };
+ </div>
+    </div>
+  );
+}
