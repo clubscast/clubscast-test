@@ -10,41 +10,48 @@ export default function Signup() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSignup = async (e) => {
+ const handleSignup = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
+    setLoading(true);
 
-    // Create auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      // Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+      });
 
-    if (authError) {
-      setError(authError.message);
+      if (authError) throw authError;
+
+      // Insert DJ record
+      const { error: djError } = await supabase
+        .from('djs')
+        .insert([
+          {
+            id: authData.user.id,
+            email: formData.email,
+            dj_name: formData.dj_name,
+            stripe_account_id: null // Will be set after Stripe Connect
+          }
+        ]);
+
+      if (djError) throw djError;
+
+      // Redirect to Stripe Connect onboarding
+      const returnUrl = `${window.location.origin}/connect-return`;
+      const refreshUrl = `${window.location.origin}/connect-refresh`;
+      
+      const stripeConnectUrl = `https://connect.stripe.com/express/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID}&state=${authData.user.id}&redirect_uri=${returnUrl}&refresh_url=${refreshUrl}`;
+      
+      window.location.href = stripeConnectUrl;
+
+    } catch (err) {
+      setError(err.message);
       setLoading(false);
-      return;
     }
-
-    // Create DJ profile
-    const { error: profileError } = await supabase
-      .from('djs')
-      .insert([
-        {
-          id: authData.user.id,
-          email,
-          dj_name: djName,
-          password_hash: 'managed_by_supabase_auth'
-        }
-      ]);
-
-    if (profileError) {
-      setError(profileError.message);
-      setLoading(false);
-      return;
-    }
-
+  };
+  
     // Success - redirect to dashboard
     router.push('/dashboard');
   };
