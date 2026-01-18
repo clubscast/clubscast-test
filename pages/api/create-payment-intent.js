@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { supabase } from '../../lib/supabase';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -10,6 +11,30 @@ export default async function handler(req, res) {
   try {
     const { amount, eventId, requestId } = req.body;
 
+    // Get event and DJ's Stripe account
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('dj_id')
+      .eq('id', eventId)
+      .single();
+
+    if (eventError) throw eventError;
+
+    const { data: dj, error: djError } = await supabase
+      .from('djs')
+      .select('stripe_account_id')
+      .eq('id', event.dj_id)
+      .single();
+
+    if (djError) throw djError;
+
+    if (!dj.stripe_account_id) {
+      return res.status(400).json({ 
+        error: 'DJ has not connected their Stripe account yet' 
+      });
+    }
+
+    // Create payment intent on DJ's connected account
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
       currency: 'usd',
@@ -20,6 +45,8 @@ export default async function handler(req, res) {
         eventId: String(eventId),
         requestId: String(requestId),
       },
+    }, {
+      stripeAccount: dj.stripe_account_id, // Charge DJ's account directly
     });
 
     return res.status(200).json({
