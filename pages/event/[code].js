@@ -10,6 +10,11 @@ export default function EventQueue() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showRating, setShowRating] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [raterName, setRaterName] = useState('');
+  const [hasRated, setHasRated] = useState(false);
+  const [ratingSuccess, setRatingSuccess] = useState('');
 
   useEffect(() => {
     if (code) {
@@ -56,6 +61,81 @@ export default function EventQueue() {
     setRequests(data || []);
   };
 
+  const submitRating = async (e) => {
+    e.preventDefault();
+    setError('');
+    
+    if (!raterName.trim()) {
+      setError('Please enter your name');
+      return;
+    }
+    
+    if (rating === 0) {
+      setError('Please select a rating');
+      return;
+    }
+
+    try {
+      const { error: ratingError } = await supabase
+        .from('ratings')
+        .insert([{
+          event_id: event.id,
+          requester_name: raterName.trim(),
+          rating: rating
+        }]);
+
+      if (ratingError) {
+        if (ratingError.code === '23505') {
+          setError('You have already rated this event');
+        } else {
+          throw ratingError;
+        }
+        return;
+      }
+
+      const { data: allRatings } = await supabase
+        .from('ratings')
+        .select('rating')
+        .eq('event_id', event.id);
+
+      const avgRating = allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length;
+
+      await supabase
+        .from('events')
+        .update({
+          average_rating: avgRating.toFixed(2),
+          total_ratings: allRatings.length
+        })
+        .eq('id', event.id);
+
+      const { data: djEvents } = await supabase
+        .from('events')
+        .select('average_rating')
+        .eq('dj_id', event.dj_id)
+        .gt('total_ratings', 0);
+
+      if (djEvents && djEvents.length > 0) {
+        const djOverallRating = djEvents.reduce((sum, e) => sum + parseFloat(e.average_rating), 0) / djEvents.length;
+        
+        await supabase
+          .from('djs')
+          .update({ overall_rating: djOverallRating.toFixed(2) })
+          .eq('id', event.dj_id);
+      }
+
+      setRatingSuccess('Thank you for your rating!');
+      setHasRated(true);
+      setShowRating(false);
+      setRating(0);
+      setRaterName('');
+      
+      loadEventAndRequests();
+
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{
@@ -71,7 +151,7 @@ export default function EventQueue() {
     );
   }
 
-  if (error || !event) {
+  if (error && !event) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -126,6 +206,24 @@ export default function EventQueue() {
           }}>
             {event.event_name}
           </h1>
+          
+          {event.total_ratings > 0 && (
+            <div style={{
+              color: '#FFD700',
+              fontSize: '20px',
+              marginBottom: '10px'
+            }}>
+              {'★'.repeat(Math.round(parseFloat(event.average_rating)))}{'☆'.repeat(5 - Math.round(parseFloat(event.average_rating)))}
+              <span style={{
+                color: 'rgba(255,255,255,0.6)',
+                fontSize: '14px',
+                marginLeft: '10px'
+              }}>
+                ({event.average_rating}/5 - {event.total_ratings} {event.total_ratings === 1 ? 'rating' : 'ratings'})
+              </span>
+            </div>
+          )}
+          
           <p style={{
             color: 'rgba(255,255,255,0.6)',
             fontSize: '16px',
@@ -146,10 +244,29 @@ export default function EventQueue() {
           </p>
         </div>
 
-        {/* Request Button */}
+        {/* Success Message */}
+        {ratingSuccess && (
+          <div style={{
+            background: 'rgba(0,255,136,0.1)',
+            border: '1px solid rgba(0,255,136,0.3)',
+            padding: '15px',
+            borderRadius: '10px',
+            marginBottom: '20px',
+            textAlign: 'center',
+            color: '#00ff88'
+          }}>
+            {ratingSuccess}
+          </div>
+        )}
+
+        {/* Buttons */}
         <div style={{
           textAlign: 'center',
-          marginBottom: '40px'
+          marginBottom: '40px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '15px',
+          justifyContent: 'center'
         }}>
           <button
             onClick={() => router.push(`/event/${code}/request`)}
@@ -170,7 +287,167 @@ export default function EventQueue() {
           >
             Request a Song
           </button>
+          
+          <button
+            onClick={() => setShowRating(true)}
+            disabled={hasRated}
+            style={{
+              padding: '16px 40px',
+              background: hasRated 
+                ? 'rgba(255,255,255,0.1)' 
+                : 'linear-gradient(135deg, #FFD700, #FFA500)',
+              color: hasRated ? 'rgba(255,255,255,0.5)' : 'white',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: '18px',
+              fontWeight: '700',
+              cursor: hasRated ? 'not-allowed' : 'pointer',
+              boxShadow: hasRated ? 'none' : '0 4px 20px rgba(255,215,0,0.4)',
+              transition: 'transform 0.2s'
+            }}
+            onMouseEnter={(e) => !hasRated && (e.target.style.transform = 'scale(1.05)')}
+            onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+          >
+            {hasRated ? 'Already Rated' : 'Rate This Event'}
+          </button>
         </div>
+
+        {/* Rating Modal */}
+        {showRating && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}>
+            <div style={{
+              background: '#0b0b0d',
+              border: '2px solid rgba(255,215,0,0.3)',
+              borderRadius: '20px',
+              padding: '40px',
+              maxWidth: '500px',
+              width: '100%'
+            }}>
+              <h2 style={{
+                color: '#FFD700',
+                marginBottom: '20px',
+                textAlign: 'center'
+              }}>
+                Rate This Event
+              </h2>
+
+              <form onSubmit={submitRating}>
+                <input
+                  type="text"
+                  placeholder="Your Name"
+                  value={raterName}
+                  onChange={(e) => setRaterName(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '14px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '10px',
+                    color: 'white',
+                    fontSize: '16px',
+                    marginBottom: '20px'
+                  }}
+                />
+
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '15px',
+                  marginBottom: '20px'
+                }}>
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '40px',
+                        color: star <= rating ? '#FFD700' : 'rgba(255,255,255,0.2)',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.target.style.transform = 'scale(1.2)'}
+                      onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
+
+                {error && (
+                  <p style={{
+                    color: '#ff6b6b',
+                    textAlign: 'center',
+                    marginBottom: '15px',
+                    fontSize: '14px'
+                  }}>
+                    {error}
+                  </p>
+                )}
+
+                <div style={{
+                  display: 'flex',
+                  gap: '10px'
+                }}>
+                  <button
+                    type="submit"
+                    style={{
+                      flex: 1,
+                      padding: '14px',
+                      background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontSize: '16px',
+                      fontWeight: '700',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Submit Rating
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRating(false);
+                      setError('');
+                      setRating(0);
+                      setRaterName('');
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '14px',
+                      background: 'rgba(255,255,255,0.1)',
+                      color: 'white',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '10px',
+                      fontSize: '16px',
+                      fontWeight: '700',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Queue Section */}
         <div style={{
