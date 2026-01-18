@@ -4,13 +4,16 @@ import { useRouter } from 'next/router';
 
 export default function Signup() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [djName, setDjName] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    dj_name: ''
+  });
 
- const handleSignup = async (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -32,17 +35,18 @@ export default function Signup() {
             id: authData.user.id,
             email: formData.email,
             dj_name: formData.dj_name,
-            stripe_account_id: null // Will be set after Stripe Connect
+            stripe_account_id: null
           }
         ]);
 
       if (djError) throw djError;
 
       // Redirect to Stripe Connect onboarding
-      const returnUrl = `${window.location.origin}/connect-return`;
-      const refreshUrl = `${window.location.origin}/connect-refresh`;
+      const baseUrl = window.location.origin;
+      const returnUrl = `${baseUrl}/connect-return`;
+      const refreshUrl = `${baseUrl}/connect-refresh`;
       
-      const stripeConnectUrl = `https://connect.stripe.com/express/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID}&state=${authData.user.id}&redirect_uri=${returnUrl}&refresh_url=${refreshUrl}`;
+      const stripeConnectUrl = `https://connect.stripe.com/express/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID}&state=${authData.user.id}&redirect_uri=${encodeURIComponent(returnUrl)}&refresh_url=${encodeURIComponent(refreshUrl)}`;
       
       window.location.href = stripeConnectUrl;
 
@@ -51,15 +55,11 @@ export default function Signup() {
       setLoading(false);
     }
   };
-  
-    // Success - redirect to dashboard
-    router.push('/dashboard');
-  };
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 100%)',
+      background: 'linear-gradient(135deg, #0b0b0d 0%, #1a0a1f 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -68,125 +68,103 @@ export default function Signup() {
     }}>
       <div style={{
         background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,0,110,0.2)',
-        padding: '40px',
+        border: '1px solid rgba(255,255,255,0.1)',
         borderRadius: '20px',
-        maxWidth: '400px',
+        padding: '40px',
+        maxWidth: '450px',
         width: '100%',
-        boxShadow: '0 0 60px rgba(255,0,110,0.3)'
+        backdropFilter: 'blur(10px)'
       }}>
         <h1 style={{
           fontSize: '32px',
+          fontWeight: '700',
+          background: 'linear-gradient(135deg, #ff006e, #00f5ff)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
           marginBottom: '10px',
-          color: '#ff006e',
           textAlign: 'center'
         }}>
           DJ Signup
         </h1>
-        
         <p style={{
           color: 'rgba(255,255,255,0.6)',
           textAlign: 'center',
           marginBottom: '30px',
           fontSize: '14px'
         }}>
-          Create your ClubsCast account
+          Create your account and connect Stripe to start accepting payments
         </p>
 
         <form onSubmit={handleSignup}>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              color: 'rgba(255,255,255,0.8)',
-              marginBottom: '8px',
-              fontSize: '14px'
-            }}>
-              DJ Name
-            </label>
-            <input
-              type="text"
-              value={djName}
-              onChange={(e) => setDjName(e.target.value)}
-              placeholder="JINKZ"
-              required
-              style={{
-                width: '100%',
-                padding: '12px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                color: 'white',
-                fontSize: '16px'
-              }}
-            />
-          </div>
+          <input
+            type="text"
+            placeholder="DJ Name"
+            value={formData.dj_name}
+            onChange={(e) => setFormData({...formData, dj_name: e.target.value})}
+            required
+            disabled={loading}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              padding: '14px',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '10px',
+              color: 'white',
+              fontSize: '16px',
+              marginBottom: '15px'
+            }}
+          />
 
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              color: 'rgba(255,255,255,0.8)',
-              marginBottom: '8px',
-              fontSize: '14px'
-            }}>
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                padding: '12px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                color: 'white',
-                fontSize: '16px'
-              }}
-            />
-          </div>
+          <input
+            type="email"
+            placeholder="Email"
+            value={formData.email}
+            onChange={(e) => setFormData({...formData, email: e.target.value})}
+            required
+            disabled={loading}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              padding: '14px',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '10px',
+              color: 'white',
+              fontSize: '16px',
+              marginBottom: '15px'
+            }}
+          />
 
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              color: 'rgba(255,255,255,0.8)',
-              marginBottom: '8px',
-              fontSize: '14px'
-            }}>
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Min 6 characters"
-              required
-              minLength={6}
-              style={{
-                width: '100%',
-                padding: '12px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                color: 'white',
-                fontSize: '16px'
-              }}
-            />
-          </div>
+          <input
+            type="password"
+            placeholder="Password"
+            value={formData.password}
+            onChange={(e) => setFormData({...formData, password: e.target.value})}
+            required
+            disabled={loading}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              padding: '14px',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '10px',
+              color: 'white',
+              fontSize: '16px',
+              marginBottom: '20px'
+            }}
+          />
 
           {error && (
-            <div style={{
-              padding: '12px',
-              background: 'rgba(255,0,0,0.1)',
-              border: '1px solid rgba(255,0,0,0.3)',
-              borderRadius: '8px',
+            <p style={{
               color: '#ff6b6b',
-              marginBottom: '20px',
-              fontSize: '14px'
+              marginBottom: '15px',
+              fontSize: '14px',
+              textAlign: 'center'
             }}>
               {error}
-            </div>
+            </p>
           )}
 
           <button
@@ -194,43 +172,66 @@ export default function Signup() {
             disabled={loading}
             style={{
               width: '100%',
-              padding: '14px',
-              background: loading ? '#666' : 'linear-gradient(135deg, #00f5ff, #00b8d4)',
-              color: loading ? 'white' : '#0a0a0a',
+              padding: '16px',
+              background: loading 
+                ? 'rgba(255,255,255,0.1)'
+                : 'linear-gradient(135deg, #ff006e, #ff4d8f)',
+              color: 'white',
               border: 'none',
-              borderRadius: '10px',
-              fontSize: '16px',
+              borderRadius: '12px',
+              fontSize: '18px',
               fontWeight: '700',
               cursor: loading ? 'not-allowed' : 'pointer',
-              marginBottom: '15px'
+              marginBottom: '20px',
+              opacity: loading ? 0.6 : 1
             }}
           >
-            {loading ? 'Creating account...' : 'Create Account'}
+            {loading ? 'Creating Account...' : 'Sign Up & Connect Stripe'}
           </button>
 
           <div style={{
-            textAlign: 'center',
-            color: 'rgba(255,255,255,0.6)',
-            fontSize: '14px'
+            textAlign: 'center'
           }}>
-            Already have an account?{' '}
-            <a href="/login" style={{ color: '#ff006e', textDecoration: 'none' }}>
-              Login
-            </a>
+            <p style={{
+              color: 'rgba(255,255,255,0.6)',
+              fontSize: '14px',
+              marginBottom: '10px'
+            }}>
+              Already have an account?
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push('/login')}
+              disabled={loading}
+              style={{
+                background: 'transparent',
+                color: '#00f5ff',
+                border: 'none',
+                fontSize: '14px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                textDecoration: 'underline'
+              }}
+            >
+              Log In
+            </button>
           </div>
         </form>
 
         <div style={{
           marginTop: '30px',
-          textAlign: 'center'
+          padding: '15px',
+          background: 'rgba(0,245,255,0.05)',
+          border: '1px solid rgba(0,245,255,0.2)',
+          borderRadius: '10px'
         }}>
-          <a href="/" style={{
-            color: 'rgba(255,255,255,0.4)',
-            textDecoration: 'none',
-            fontSize: '14px'
+          <p style={{
+            color: 'rgba(255,255,255,0.7)',
+            fontSize: '13px',
+            lineHeight: '1.6',
+            margin: 0
           }}>
-            ← Back to Home
-          </a>
+            <strong style={{ color: '#00f5ff' }}>Next Step:</strong> After signup, you'll be redirected to Stripe to connect your account. This allows you to receive payments directly from your events.
+          </p>
         </div>
       </div>
     </div>
