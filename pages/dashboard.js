@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [error, setError] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const [newEvent, setNewEvent] = useState({
     event_name: '',
@@ -114,6 +115,43 @@ export default function Dashboard() {
         tier_3_name: 'VIP',
         tier_3_price: '20'
       });
+      loadEvents();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const deleteEvent = async (eventId) => {
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', eventId);
+
+      if (error) throw error;
+
+      // Recalculate DJ overall rating after deleting event
+      const { data: remainingEvents } = await supabase
+        .from('events')
+        .select('average_rating')
+        .eq('dj_id', user.id)
+        .gt('total_ratings', 0);
+
+      if (remainingEvents && remainingEvents.length > 0) {
+        const djOverallRating = remainingEvents.reduce((sum, e) => sum + parseFloat(e.average_rating), 0) / remainingEvents.length;
+        
+        await supabase
+          .from('djs')
+          .update({ overall_rating: djOverallRating.toFixed(2) })
+          .eq('id', user.id);
+      } else {
+        await supabase
+          .from('djs')
+          .update({ overall_rating: 0 })
+          .eq('id', user.id);
+      }
+
+      setDeleteConfirm(null);
       loadEvents();
     } catch (err) {
       setError(err.message);
@@ -231,6 +269,17 @@ export default function Dashboard() {
               fontSize: '14px'
             }}>
               Welcome back, {user?.dj_name}
+              {user?.overall_rating > 0 && (
+                <span style={{
+                  marginLeft: '10px',
+                  color: '#FFD700'
+                }}>
+                  {'★'.repeat(Math.round(parseFloat(user.overall_rating)))}{'☆'.repeat(5 - Math.round(parseFloat(user.overall_rating)))}
+                  <span style={{ color: '#aaa', fontSize: '12px', marginLeft: '5px' }}>
+                    ({user.overall_rating}/5)
+                  </span>
+                </span>
+              )}
             </p>
           </div>
           <button
@@ -714,6 +763,84 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Delete Confirmation Modal */}
+        {deleteConfirm && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}>
+            <div style={{
+              background: '#0b0b0d',
+              border: '2px solid rgba(255,0,0,0.3)',
+              borderRadius: '20px',
+              padding: '40px',
+              maxWidth: '500px',
+              width: '100%'
+            }}>
+              <h2 style={{
+                color: '#ff6b6b',
+                marginBottom: '20px',
+                textAlign: 'center'
+              }}>
+                Delete Event?
+              </h2>
+              <p style={{
+                color: 'rgba(255,255,255,0.7)',
+                textAlign: 'center',
+                marginBottom: '30px'
+              }}>
+                Are you sure you want to delete "{deleteConfirm.event_name}"? This action cannot be undone.
+              </p>
+              <div style={{
+                display: 'flex',
+                gap: '10px'
+              }}>
+                <button
+                  onClick={() => deleteEvent(deleteConfirm.id)}
+                  style={{
+                    flex: 1,
+                    padding: '14px',
+                    background: '#ff6b6b',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  style={{
+                    flex: 1,
+                    padding: '14px',
+                    background: 'rgba(255,255,255,0.1)',
+                    color: 'white',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '10px',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Events List */}
         <div style={{
           display: 'grid',
@@ -738,6 +865,24 @@ export default function Dashboard() {
               }}>
                 {event.event_name}
               </h3>
+              
+              {event.total_ratings > 0 && (
+                <div style={{
+                  color: '#FFD700',
+                  fontSize: '16px',
+                  marginBottom: '10px'
+                }}>
+                  {'★'.repeat(Math.round(parseFloat(event.average_rating)))}{'☆'.repeat(5 - Math.round(parseFloat(event.average_rating)))}
+                  <span style={{
+                    color: 'rgba(255,255,255,0.6)',
+                    fontSize: '12px',
+                    marginLeft: '8px'
+                  }}>
+                    ({event.average_rating}/5)
+                  </span>
+                </div>
+              )}
+              
               <p style={{ 
                 color: 'rgba(255,255,255,0.7)',
                 fontSize: '14px',
@@ -782,7 +927,7 @@ export default function Dashboard() {
               <div style={{ 
                 display: 'flex',
                 gap: '10px',
-                marginTop: '10px'
+                marginBottom: '10px'
               }}>
                 <button
                   onClick={() => router.push(`/event/${event.event_code}`)}
@@ -817,6 +962,23 @@ export default function Dashboard() {
                   DJ Panel
                 </button>
               </div>
+
+              <button
+                onClick={() => setDeleteConfirm(event)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: 'rgba(255,0,0,0.2)',
+                  color: '#ff6b6b',
+                  border: '1px solid rgba(255,0,0,0.3)',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600'
+                }}
+              >
+                Delete Event
+              </button>
             </div>
           ))}
         </div>
