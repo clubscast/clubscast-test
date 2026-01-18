@@ -247,7 +247,7 @@ export default function Dashboard() {
     }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
-        {/* Header */}
+       {/* Header */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -281,21 +281,83 @@ export default function Dashboard() {
                 </span>
               )}
             </p>
+            {!user?.stripe_account_id && (
+              <div style={{
+                marginTop: '10px',
+                padding: '8px 12px',
+                background: 'rgba(255,215,0,0.1)',
+                border: '1px solid rgba(255,215,0,0.3)',
+                borderRadius: '6px',
+                display: 'inline-block'
+              }}>
+                <span style={{
+                  color: '#FFD700',
+                  fontSize: '13px',
+                  fontWeight: '600'
+                }}>
+                  ⚠ Stripe Not Connected
+                </span>
+              </div>
+            )}
+            {user?.stripe_account_id && (
+              <div style={{
+                marginTop: '10px',
+                padding: '8px 12px',
+                background: 'rgba(0,255,136,0.1)',
+                border: '1px solid rgba(0,255,136,0.3)',
+                borderRadius: '6px',
+                display: 'inline-block'
+              }}>
+                <span style={{
+                  color: '#00ff88',
+                  fontSize: '13px',
+                  fontWeight: '600'
+                }}>
+                  ✓ Stripe Connected
+                </span>
+              </div>
+            )}
           </div>
-          <button
-            onClick={handleLogout}
-            style={{
-              padding: '10px 20px',
-              background: 'rgba(255,255,255,0.1)',
-              color: 'white',
-              border: '1px solid rgba(255,255,255,0.2)',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            Logout
-          </button>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {!user?.stripe_account_id && (
+              <button
+                onClick={() => {
+                  const baseUrl = window.location.origin;
+                  const returnUrl = `${baseUrl}/connect-return`;
+                  const refreshUrl = `${baseUrl}/connect-refresh`;
+                  const stripeConnectUrl = `https://connect.stripe.com/express/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID}&state=${user.id}&redirect_uri=${encodeURIComponent(returnUrl)}&refresh_url=${encodeURIComponent(refreshUrl)}`;
+                  window.location.href = stripeConnectUrl;
+                }}
+                style={{
+                  padding: '10px 20px',
+                  background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  boxShadow: '0 4px 15px rgba(255,215,0,0.3)'
+                }}
+              >
+                Connect Stripe
+              </button>
+            )}
+            <button
+              onClick={handleLogout}
+              style={{
+                padding: '10px 20px',
+                background: 'rgba(255,255,255,0.1)',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         {/* Create Event Button */}
