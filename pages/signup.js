@@ -1,3 +1,22 @@
+const handleStripeReturn = async () => {
+  const { code, state: userId, scope } = router.query;
+
+  console.log('Query params:', { code, userId, scope, allParams: router.query });
+
+  if (!code) {
+    setError('Missing authorization code');
+    setStatus('error');
+    return;
+  }
+
+  if (!userId) {
+    setError('Missing user ID. Please try signing up again.');
+    setStatus('error');
+    return;
+  }
+
+  // ... rest of your code
+
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useRouter } from 'next/router';
