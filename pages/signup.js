@@ -1,22 +1,3 @@
-const handleStripeReturn = async () => {
-  const { code, state: userId, scope } = router.query;
-
-  console.log('Query params:', { code, userId, scope, allParams: router.query });
-
-  if (!code) {
-    setError('Missing authorization code');
-    setStatus('error');
-    return;
-  }
-
-  if (!userId) {
-    setError('Missing user ID. Please try signing up again.');
-    setStatus('error');
-    return;
-  }
-
-  // ... rest of your code
-
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useRouter } from 'next/router';
@@ -65,7 +46,8 @@ export default function Signup() {
       const returnUrl = `${baseUrl}/connect-return`;
       const refreshUrl = `${baseUrl}/connect-refresh`;
       
-const stripeConnectUrl = `https://connect.stripe.com/express/oauth/v2/authorize?client_id=${process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID}&state=${authData.user.id}&scope=read_write&redirect_uri=${encodeURIComponent(returnUrl)}&refresh_url=${encodeURIComponent(refreshUrl)}`;
+      // FIXED: Added /v2 and scope=read_write
+      const stripeConnectUrl = `https://connect.stripe.com/express/oauth/v2/authorize?client_id=${process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID}&state=${authData.user.id}&scope=read_write&redirect_uri=${encodeURIComponent(returnUrl)}&refresh_url=${encodeURIComponent(refreshUrl)}`;
       
       window.location.href = stripeConnectUrl;
 
