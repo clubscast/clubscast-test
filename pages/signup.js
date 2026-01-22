@@ -65,7 +65,7 @@ export default function Signup() {
       const returnUrl = `${baseUrl}/connect-return`;
       const refreshUrl = `${baseUrl}/connect-refresh`;
       
-      const stripeConnectUrl = `https://connect.stripe.com/express/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID}&state=${authData.user.id}&redirect_uri=${encodeURIComponent(returnUrl)}&refresh_url=${encodeURIComponent(refreshUrl)}`;
+const stripeConnectUrl = `https://connect.stripe.com/express/oauth/v2/authorize?client_id=${process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID}&state=${authData.user.id}&scope=read_write&redirect_uri=${encodeURIComponent(returnUrl)}&refresh_url=${encodeURIComponent(refreshUrl)}`;
       
       window.location.href = stripeConnectUrl;
 
