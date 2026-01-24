@@ -553,6 +553,26 @@ function RequestFormContent({ eventCode }) {
                   </p>
                 )}
 
+            const handleSubmit = async (e) => {
+              e.preventDefault();
+              setError('');
+              setProcessing(true);
+            
+              try {
+                const selectedTier = formData.tier;
+                const amount = event[`${selectedTier}_price`];
+                const tierName = event[`${selectedTier}_name`];
+                const isFreeRequest = !event.require_payment || hostCodeValid;
+            
+                // NEW: Check if card info is required but not complete
+                if (!isFreeRequest && !cardComplete) {
+                  setError('Please enter your credit card information');
+                  setProcessing(false);
+                  return;
+                }
+            
+                // Rest of your existing code...
+
             {/* Free Event Message */}
             {isFreeEvent && !event.host_code && (
               <div style={{
