@@ -141,7 +141,8 @@ const requestData = requestDataArray[0];  // Get first item manually
 
         setSuccess(true);
         setTimeout(() => {
-          router.push(`/event/${eventCode}`);
+          const code = router.query.code || eventCode;
+          router.push(`/event/${code}`);
         }, 2000);
         return;
       }
@@ -199,7 +200,8 @@ const requestData = requestDataArray[0];  // Get first item manually
 
       setSuccess(true);
       setTimeout(() => {
-        router.push(`/event/${eventCode}`);
+        const code = router.query.code || eventCode;
+        router.push(`/event/${code}`);
       }, 2000);
 
     } catch (err) {
