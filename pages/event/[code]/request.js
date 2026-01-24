@@ -16,6 +16,8 @@ function RequestFormContent({ eventCode }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [cardError, setCardError] = useState('');
+  const [cardComplete, setCardComplete] = useState(false);
 
   const [formData, setFormData] = useState({
     requester_name: '',
@@ -500,19 +502,6 @@ function RequestFormContent({ eventCode }) {
               </div>
             )}
 
-          {/* DEBUG INFO */}
-            <div style={{
-              padding: '10px',
-              background: 'rgba(255,255,0,0.1)',
-              border: '1px solid yellow',
-              borderRadius: '8px',
-              marginBottom: '15px',
-              fontSize: '12px',
-              color: 'yellow'
-            }}>
-              Debug: require_payment={String(event.require_payment)}, hostCodeValid={String(hostCodeValid)}, isFreeRequest={String(isFreeRequest)}
-            </div>
-
             {/* Payment Card - Only show if payment required and no valid host code */}
             {event.require_payment && !hostCodeValid && (
               <div style={{
@@ -530,7 +519,7 @@ function RequestFormContent({ eventCode }) {
                 }}>
                   Card Details
                 </label>
-                <div style={{
+               <div style={{
                   padding: '14px',
                   background: 'white',
                   borderRadius: '8px'
@@ -547,10 +536,22 @@ function RequestFormContent({ eventCode }) {
                         },
                       },
                     }}
+                    onChange={(e) => {
+                      setCardComplete(e.complete);
+                      setCardError(e.error ? e.error.message : '');
+                    }}
                   />
                 </div>
-              </div>
-            )}
+                {cardError && (
+                  <p style={{
+                    color: '#ff6b6b',
+                    fontSize: '13px',
+                    marginTop: '8px',
+                    marginBottom: '0'
+                  }}>
+                    {cardError}
+                  </p>
+                )}
 
             {/* Free Event Message */}
             {isFreeEvent && !event.host_code && (
