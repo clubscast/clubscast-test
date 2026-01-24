@@ -105,23 +105,25 @@ function RequestFormContent({ eventCode }) {
         return;
       }
 
-      // Insert request into database first
-      const { data: requestData, error: insertError } = await supabase
-        .from('requests')
-        .insert([{
-          event_id: event.id,
-          requester_name: formData.requester_name,
-          song: formData.song,
-          artist: formData.artist,
-          message: formData.message || null,
-          tier_name: tierName,
-          amount: isFreeRequest ? 0 : amount,
-          payment_status: isFreeRequest ? 'free' : 'pending',
-          request_status: 'pending',
-          used_host_code: hostCodeValid
-        }])
-        .select()
-        .single();
+    const { data: requestDataArray, error: insertError } = await supabase
+      .from('requests')
+      .insert([{
+        event_id: event.id,
+        requester_name: formData.requester_name,
+        song: formData.song,
+        artist: formData.artist,
+        message: formData.message || null,
+        tier_name: tierName,
+        amount: isFreeRequest ? 0 : amount,
+        payment_status: isFreeRequest ? 'free' : 'pending',
+        request_status: 'pending',
+        used_host_code: hostCodeValid
+      }])
+      .select();
+
+if (insertError) throw insertError;
+
+const requestData = requestDataArray[0];  // Get first item manually
 
       if (insertError) throw insertError;
 
