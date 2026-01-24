@@ -125,7 +125,6 @@ if (insertError) throw insertError;
 
 const requestData = requestDataArray[0];  // Get first item manually
 
-      if (insertError) throw insertError;
 
       // If free request, we're done
       if (isFreeRequest) {
