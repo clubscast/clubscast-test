@@ -122,6 +122,27 @@ function RequestFormContent({ eventCode }) {
 
       // If free request, we're done
       if (isFreeRequest) {
+      const handleSubmit = async (e) => {
+          e.preventDefault();
+          setError('');
+          setProcessing(true);
+
+  try {
+    const selectedTier = formData.tier;
+    const amount = event[`${selectedTier}_price`];
+    const tierName = event[`${selectedTier}_name`];
+    const isFreeRequest = !event.require_payment || hostCodeValid;
+
+    // ADD THIS NEW CHECK HERE
+    if (!isFreeRequest && !cardComplete) {
+      setError('Please enter your credit card information');
+      setProcessing(false);
+      return;
+    }
+
+    // Rest of existing code continues below...
+    // Insert request into database first
+    const { data: requestData, error: insertError } = await supabase
         // Decrement host code uses if used
         if (hostCodeValid) {
           await supabase
