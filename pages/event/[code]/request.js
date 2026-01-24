@@ -448,67 +448,80 @@ const requestData = requestDataArray[0];  // Get first item manually
               </div>
             )}
 
-            {/* Pricing Tiers - Only show if payment required and no valid host code */}
-            {event.require_payment && !hostCodeValid && (
-              <div style={{
-                padding: '15px',
-                background: 'rgba(255,0,110,0.05)',
-                border: '1px solid rgba(255,0,110,0.2)',
-                borderRadius: '10px',
-                marginBottom: '20px'
+          {/* Pricing Tiers - Only show if payment required and no valid host code */}
+          {event.require_payment && !hostCodeValid && (
+            <div style={{
+              padding: '15px',
+              background: 'rgba(255,0,110,0.05)',
+              border: '1px solid rgba(255,0,110,0.2)',
+              borderRadius: '10px',
+              marginBottom: '20px'
+            }}>
+              <label style={{
+                display: 'block',
+                color: 'rgba(255,255,255,0.7)',
+                fontSize: '14px',
+                marginBottom: '12px'
               }}>
-                <label style={{
-                  display: 'block',
-                  color: 'rgba(255,255,255,0.7)',
-                  fontSize: '14px',
-                  marginBottom: '12px'
-                }}>
-                  Select Tier
-                </label>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {['tier_1', 'tier_2', 'tier_3'].map(tier => (
-                    <label
-                      key={tier}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '12px',
-                        background: formData.tier === tier ? 'rgba(255,0,110,0.2)' : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${formData.tier === tier ? '#ff006e' : 'rgba(255,255,255,0.1)'}`,
-                        borderRadius: '8px',
-                        cursor: processing ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.2s',
-                        opacity: processing ? 0.5 : 1
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="tier"
-                        value={tier}
-                        checked={formData.tier === tier}
-                        onChange={(e) => setFormData({...formData, tier: e.target.value})}
-                        disabled={processing}
-                        style={{ marginRight: '10px' }}
-                      />
-                      <span style={{
-                        flex: 1,
+                Select Tier
+              </label>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {[
+                  { key: 'tier_1', desc: 'Goes to bottom of queue' },
+                  { key: 'tier_2', desc: 'Jumps 3 songs up the queue' },
+                  { key: 'tier_3', desc: 'Goes to top (below other VIPs)' }
+                ].map(tier => (
+                  <label
+                    key={tier.key}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '12px',
+                      background: formData.tier === tier.key ? 'rgba(255,0,110,0.2)' : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${formData.tier === tier.key ? '#ff006e' : 'rgba(255,255,255,0.1)'}`,
+                      borderRadius: '8px',
+                      cursor: processing ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: processing ? 0.5 : 1
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="tier"
+                      value={tier.key}
+                      checked={formData.tier === tier.key}
+                      onChange={(e) => setFormData({...formData, tier: e.target.value})}
+                      disabled={processing}
+                      style={{ marginRight: '10px' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{
                         color: 'white',
-                        fontWeight: '600'
+                        fontWeight: '600',
+                        marginBottom: '4px'
                       }}>
-                        {event[`${tier}_name`]}
-                      </span>
-                      <span style={{
-                        color: '#00f5ff',
-                        fontWeight: '700'
+                        {event[`${tier.key}_name`]}
+                      </div>
+                      <div style={{
+                        color: 'rgba(255,255,255,0.5)',
+                        fontSize: '12px'
                       }}>
-                        ${event[`${tier}_price`]}
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                        {tier.desc}
+                      </div>
+                    </div>
+                    <span style={{
+                      color: '#00f5ff',
+                      fontWeight: '700',
+                      fontSize: '18px'
+                    }}>
+                      ${event[`${tier.key}_price`]}
+                    </span>
+                  </label>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
             {/* Payment Card - Only show if payment required and no valid host code */}
             {event.require_payment && !hostCodeValid && (
