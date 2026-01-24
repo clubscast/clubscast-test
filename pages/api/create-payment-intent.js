@@ -1,7 +1,13 @@
 import Stripe from 'stripe';
-import { supabase } from '../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Use service role to bypass RLS
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -11,22 +17,36 @@ export default async function handler(req, res) {
   try {
     const { amount, eventId, requestId } = req.body;
 
+    if (!amount || !eventId || !requestId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
     // Get event and DJ's Stripe account
-    const { data: event, error: eventError } = await supabase
+    const { data: eventData, error: eventError } = await supabase
       .from('events')
       .select('dj_id')
-      .eq('id', eventId)
-      .single();
+      .eq('id', eventId);
 
     if (eventError) throw eventError;
+    
+    if (!eventData || eventData.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
 
-    const { data: dj, error: djError } = await supabase
+    const event = eventData[0];
+
+    const { data: djData, error: djError } = await supabase
       .from('djs')
       .select('stripe_account_id')
-      .eq('id', event.dj_id)
-      .single();
+      .eq('id', event.dj_id);
 
     if (djError) throw djError;
+
+    if (!djData || djData.length === 0) {
+      return res.status(404).json({ error: 'DJ not found' });
+    }
+
+    const dj = djData[0];
 
     if (!dj.stripe_account_id) {
       return res.status(400).json({ 
@@ -46,7 +66,7 @@ export default async function handler(req, res) {
         requestId: String(requestId),
       },
     }, {
-      stripeAccount: dj.stripe_account_id, // Charge DJ's account directly
+      stripeAccount: dj.stripe_account_id,
     });
 
     return res.status(200).json({
