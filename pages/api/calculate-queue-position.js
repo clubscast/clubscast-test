@@ -13,16 +13,46 @@ export default async function handler(req, res) {
   try {
     const { eventId, tier, requestId } = req.body;
 
-    // Get all pending requests EXCEPT the new one
-    const { data: requests, error } = await supabase
+    // Get ALL pending requests for this event
+    const { data: allRequests, error } = await supabase
       .from('requests')
-      .select('id, queue_position, tier_name')
+      .select('id, queue_position, tier_name, created_at')
       .eq('event_id', eventId)
       .eq('request_status', 'pending')
-      .neq('id', requestId) // Exclude the newly inserted request
-      .order('queue_position', { ascending: true });
+      .order('created_at', { ascending: true });
 
     if (error) throw error;
+
+    // First, initialize any null positions based on creation order
+    let currentPos = 1;
+    const initUpdates = [];
+    
+    allRequests.forEach(req => {
+      if (req.queue_position === null || req.queue_position === undefined) {
+        initUpdates.push({
+          id: req.id,
+          queue_position: currentPos
+        });
+        req.queue_position = currentPos; // Update in memory too
+        currentPos++;
+      } else {
+        currentPos = Math.max(currentPos, req.queue_position + 1);
+      }
+    });
+
+    // Apply initialization updates
+    for (const update of initUpdates) {
+      await supabase
+        .from('requests')
+        .update({ queue_position: update.queue_position })
+        .eq('id', update.id);
+    }
+
+    // Now get requests excluding the new one
+    const requests = allRequests.filter(r => r.id !== requestId);
+    
+    // Sort by position
+    requests.sort((a, b) => a.queue_position - b.queue_position);
 
     let newPosition;
     const updates = [];
@@ -57,9 +87,8 @@ export default async function handler(req, res) {
       const totalExisting = requests.length;
       const vipCount = vipRequests.length;
       
-      // Position is 3 spots from the end, but after all VIPs
-      // If there are 16 existing, new one would be 17, so 3 up = position 14
-      newPosition = Math.max(vipCount + 1, totalExisting + 1 - 3);
+      // If there are 16 existing, priority goes to position 14 (3 up from bottom at 17)
+      newPosition = Math.max(vipCount + 1, totalExisting - 2);
       
       // Shift requests at this position and below down by 1
       requests.forEach(req => {
@@ -92,7 +121,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ 
       success: true,
-      position: newPosition 
+      position: newPosition
     });
     
   } catch (error) {
