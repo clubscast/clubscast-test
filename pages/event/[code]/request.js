@@ -121,9 +121,27 @@ function RequestFormContent({ eventCode }) {
       }])
       .select();
 
-if (insertError) throw insertError;
+    if (insertError) throw insertError;
+    
+    if (!requestDataArray || requestDataArray.length === 0) {
+      throw new Error('No data returned from insert');
+    }
+    
+    requestData = requestDataArray[0];
+    
+    // Calculate and set queue position based on tier
+    await fetch('/api/calculate-queue-position', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        eventId: event.id,
+        tier: tierName,
+        requestId: requestData.id
+      }),
+    });
 
-const requestData = requestDataArray[0];  // Get first item manually
+// Continue with rest of code...
+      
 
 
       // If free request, we're done
