@@ -326,6 +326,8 @@ export default function Dashboard() {
                   const returnUrl = `${baseUrl}/connect-return`;
                   const refreshUrl = `${baseUrl}/connect-refresh`;
                   const stripeConnectUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID}&scope=read_write&state=${user.id}&redirect_uri=${encodeURIComponent(returnUrl)}`;
+                  console.log('🔍 Return URL:', returnUrl);
+                  console.log('🔍 Full Stripe URL:', stripeConnectUrl);
                   window.location.href = stripeConnectUrl;
                 }}
                 style={{
