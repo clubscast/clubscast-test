@@ -31,8 +31,15 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
+  checkUser();
+}, []); // ← existing one, leave as is
+
+// ADD THIS NEW ONE RIGHT BELOW:
+useEffect(() => {
+  if (router.query.from === 'stripe') {
     checkUser();
-  }, []);
+  }
+}, [router.query]);
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
