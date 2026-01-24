@@ -41,9 +41,9 @@ export default function ConnectReturn() {
     setStatus('success');
     
     // Redirect to dashboard after 2 seconds
-    setTimeout(() => {
-      router.push('/dashboard');
-    }, 2000);
+   setTimeout(() => {
+  router.push('/dashboard?from=stripe');
+}, 2000);
 
   } catch (err) {
     setError(err.message);
