@@ -35,23 +35,33 @@ function RequestFormContent({ eventCode }) {
     }
   }, [eventCode]);
 
-  const loadEvent = async () => {
-    try {
-      const { data: eventData, error: eventError } = await supabase
-        .from('events')
-        .select('*')
-        .eq('event_code', eventCode)
-        .single();
-
-      if (eventError) throw eventError;
-      setEvent(eventData);
-      setLoading(false);
-    } catch (err) {
-      setError(err.message);
-      setLoading(false);
+ const loadEvent = async () => {
+  try {
+    // Check if eventCode exists
+    if (!eventCode) {
+      throw new Error('Event code not found');
     }
-  };
 
+    const { data: eventData, error: eventError } = await supabase
+      .from('events')
+      .select('*')
+      .eq('event_code', eventCode.toUpperCase()); // Don't use .single() yet
+
+    if (eventError) throw eventError;
+    
+    // Check if event exists
+    if (!eventData || eventData.length === 0) {
+      throw new Error('Event not found. Please check the event code.');
+    }
+
+    // Now we know we have at least one event
+    setEvent(eventData[0]);
+    setLoading(false);
+  } catch (err) {
+    setError(err.message);
+    setLoading(false);
+  }
+};
   const checkHostCode = async () => {
     if (!formData.host_code.trim()) {
       setHostCodeValid(false);
