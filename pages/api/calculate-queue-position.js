@@ -129,3 +129,16 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: error.message });
   }
 }
+
+const requestData = requestDataArray[0];
+
+// Calculate and set queue position based on tier
+await fetch('/api/calculate-queue-position', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    eventId: event.id,
+    tier: tierName,
+    requestId: requestData.id
+  }),
+});
