@@ -54,19 +54,21 @@ export default async function handler(req, res) {
       });
     }
 
-    // Create payment intent on DJ's connected account
+    // Create payment intent on PLATFORM account with destination charge
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100),
+      amount: Math.round(amount * 100), // Convert to cents
       currency: 'usd',
       automatic_payment_methods: {
         enabled: true,
+      },
+      application_fee_amount: Math.round(amount * 100 * 0.10), // 10% platform fee (adjust as needed)
+      transfer_data: {
+        destination: dj.stripe_account_id, // Send money to DJ's account
       },
       metadata: {
         eventId: String(eventId),
         requestId: String(requestId),
       },
-    }, {
-      stripeAccount: dj.stripe_account_id,
     });
 
     return res.status(200).json({
