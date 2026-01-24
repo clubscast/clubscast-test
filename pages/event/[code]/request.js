@@ -37,33 +37,31 @@ function RequestFormContent({ eventCode }) {
     }
   }, [eventCode]);
 
- const loadEvent = async () => {
-  try {
-    // Check if eventCode exists
-    if (!eventCode) {
-      throw new Error('Event code not found');
+  const loadEvent = async () => {
+    try {
+      if (!eventCode) {
+        throw new Error('Event code not found');
+      }
+
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
+        .select('*')
+        .eq('event_code', eventCode.toUpperCase());
+
+      if (eventError) throw eventError;
+      
+      if (!eventData || eventData.length === 0) {
+        throw new Error('Event not found. Please check the event code.');
+      }
+
+      setEvent(eventData[0]);
+      setLoading(false);
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
     }
+  };
 
-    const { data: eventData, error: eventError } = await supabase
-      .from('events')
-      .select('*')
-      .eq('event_code', eventCode.toUpperCase()); // Don't use .single() yet
-
-    if (eventError) throw eventError;
-    
-    // Check if event exists
-    if (!eventData || eventData.length === 0) {
-      throw new Error('Event not found. Please check the event code.');
-    }
-
-    // Now we know we have at least one event
-    setEvent(eventData[0]);
-    setLoading(false);
-  } catch (err) {
-    setError(err.message);
-    setLoading(false);
-  }
-};
   const checkHostCode = async () => {
     if (!formData.host_code.trim()) {
       setHostCodeValid(false);
@@ -100,6 +98,13 @@ function RequestFormContent({ eventCode }) {
       const tierName = event[`${selectedTier}_name`];
       const isFreeRequest = !event.require_payment || hostCodeValid;
 
+      // Check if card info is required but not complete
+      if (!isFreeRequest && !cardComplete) {
+        setError('Please enter your credit card information');
+        setProcessing(false);
+        return;
+      }
+
       // Insert request into database first
       const { data: requestData, error: insertError } = await supabase
         .from('requests')
@@ -122,27 +127,6 @@ function RequestFormContent({ eventCode }) {
 
       // If free request, we're done
       if (isFreeRequest) {
-      const handleSubmit = async (e) => {
-          e.preventDefault();
-          setError('');
-          setProcessing(true);
-
-  try {
-    const selectedTier = formData.tier;
-    const amount = event[`${selectedTier}_price`];
-    const tierName = event[`${selectedTier}_name`];
-    const isFreeRequest = !event.require_payment || hostCodeValid;
-
-    // ADD THIS NEW CHECK HERE
-    if (!isFreeRequest && !cardComplete) {
-      setError('Please enter your credit card information');
-      setProcessing(false);
-      return;
-    }
-
-    // Rest of existing code continues below...
-    // Insert request into database first
-    const { data: requestData, error: insertError } = await supabase
         // Decrement host code uses if used
         if (hostCodeValid) {
           await supabase
@@ -540,7 +524,7 @@ function RequestFormContent({ eventCode }) {
                 }}>
                   Card Details
                 </label>
-               <div style={{
+                <div style={{
                   padding: '14px',
                   background: 'white',
                   borderRadius: '8px'
@@ -573,26 +557,8 @@ function RequestFormContent({ eventCode }) {
                     {cardError}
                   </p>
                 )}
-
-            const handleSubmit = async (e) => {
-              e.preventDefault();
-              setError('');
-              setProcessing(true);
-            
-              try {
-                const selectedTier = formData.tier;
-                const amount = event[`${selectedTier}_price`];
-                const tierName = event[`${selectedTier}_name`];
-                const isFreeRequest = !event.require_payment || hostCodeValid;
-            
-                // NEW: Check if card info is required but not complete
-                if (!isFreeRequest && !cardComplete) {
-                  setError('Please enter your credit card information');
-                  setProcessing(false);
-                  return;
-                }
-            
-                // Rest of your existing code...
+              </div>
+            )}
 
             {/* Free Event Message */}
             {isFreeEvent && !event.host_code && (
