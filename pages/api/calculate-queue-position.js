@@ -13,12 +13,13 @@ export default async function handler(req, res) {
   try {
     const { eventId, tier, requestId } = req.body;
 
-    // Get all pending requests for this event, ordered by current position
+    // Get all pending requests EXCEPT the new one
     const { data: requests, error } = await supabase
       .from('requests')
       .select('id, queue_position, tier_name')
       .eq('event_id', eventId)
       .eq('request_status', 'pending')
+      .neq('id', requestId) // Exclude the newly inserted request
       .order('queue_position', { ascending: true });
 
     if (error) throw error;
@@ -53,11 +54,12 @@ export default async function handler(req, res) {
       const vipRequests = requests.filter(r => 
         r.tier_name.includes('VIP') || r.tier_name.includes('tier_3')
       );
-      const totalRequests = requests.length;
+      const totalExisting = requests.length;
       const vipCount = vipRequests.length;
       
-      // Position is either 3 from bottom, or right after VIPs (whichever is lower)
-      newPosition = Math.max(vipCount + 1, totalRequests - 2);
+      // Position is 3 spots from the end, but after all VIPs
+      // If there are 16 existing, new one would be 17, so 3 up = position 14
+      newPosition = Math.max(vipCount + 1, totalExisting + 1 - 3);
       
       // Shift requests at this position and below down by 1
       requests.forEach(req => {
