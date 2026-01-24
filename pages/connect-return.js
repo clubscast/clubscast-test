@@ -7,45 +7,49 @@ export default function ConnectReturn() {
   const [status, setStatus] = useState('processing');
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    handleStripeReturn();
-  }, [router.query]);
+ useEffect(() => {
+  handleStripeReturn();
+}, [router.isReady, router.query]); // Added router.isReady
 
   const handleStripeReturn = async () => {
-    const { code, state: userId } = router.query;
+  // Wait for router to be ready
+  if (!router.isReady) return;
+  
+  const { code, state: userId } = router.query;
 
-    if (!code || !userId) {
-      setError('Missing authorization code');
-      setStatus('error');
-      return;
+  // If still no params, show error
+  if (!code || !userId) {
+    setError('Missing authorization code or state parameter');
+    setStatus('error');
+    return;
+  }
+
+  try {
+    // Exchange code for Stripe account ID
+    const response = await fetch('/api/stripe-connect-callback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, userId }),
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error);
     }
 
-    try {
-      // Exchange code for Stripe account ID
-      const response = await fetch('/api/stripe-connect-callback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, userId }),
-      });
+    setStatus('success');
+    
+    // Redirect to dashboard after 2 seconds
+    setTimeout(() => {
+      router.push('/dashboard');
+    }, 2000);
 
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      setStatus('success');
-      
-      // Redirect to dashboard after 2 seconds
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 2000);
-
-    } catch (err) {
-      setError(err.message);
-      setStatus('error');
-    }
-  };
+  } catch (err) {
+    setError(err.message);
+    setStatus('error');
+  }
+};
 
   return (
     <div style={{
