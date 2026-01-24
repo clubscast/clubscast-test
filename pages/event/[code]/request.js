@@ -87,60 +87,49 @@ function RequestFormContent({ eventCode }) {
     }
   }, [formData.host_code, event]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setProcessing(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
+  setProcessing(true);
 
-    try {
-      const selectedTier = formData.tier;
-      const amount = event[`${selectedTier}_price`];
-      const tierName = event[`${selectedTier}_name`];
-      const isFreeRequest = !event.require_payment || hostCodeValid;
+  try {
+    const selectedTier = formData.tier;
+    const amount = event[`${selectedTier}_price`];
+    const tierName = event[`${selectedTier}_name`];
+    const isFreeRequest = !event.require_payment || hostCodeValid;
 
-      // Check if card info is required but not complete
-      if (!isFreeRequest && !cardComplete) {
-        setError('Please enter your credit card information');
-        setProcessing(false);
-        return;
-      }
+    // Check if card info is required but not complete
+    if (!isFreeRequest && !cardComplete) {
+      setError('Please enter your credit card information');
+      setProcessing(false);
+      return;
+    }
 
-  // Insert request into database first
-const { data: requestDataArray, error: insertError } = await supabase
-  .from('requests')
-  .insert([{
-    event_id: event.id,
-    requester_name: formData.requester_name,
-    song: formData.song,
-    artist: formData.artist,
-    message: formData.message || null,
-    tier_name: tierName,
-    amount: isFreeRequest ? 0 : amount,
-    payment_status: isFreeRequest ? 'free' : 'pending',
-    request_status: 'pending',
-    used_host_code: hostCodeValid
-  }])
-  .select();
+    // Insert request into database first
+    const { data: requestDataArray, error: insertError } = await supabase
+      .from('requests')
+      .insert([{
+        event_id: event.id,
+        requester_name: formData.requester_name,
+        song: formData.song,
+        artist: formData.artist,
+        message: formData.message || null,
+        tier_name: tierName,
+        amount: isFreeRequest ? 0 : amount,
+        payment_status: isFreeRequest ? 'free' : 'pending',
+        request_status: 'pending',
+        used_host_code: hostCodeValid
+      }])
+      .select();
 
-if (insertError) throw insertError;
+    if (insertError) throw insertError;
 
-if (!requestDataArray || requestDataArray.length === 0) {
-  throw new Error('No data returned from insert');
-}
+    if (!requestDataArray || requestDataArray.length === 0) {
+      throw new Error('No data returned from insert');
+    }
 
-const requestData = requestDataArray[0];
+    const requestData = requestDataArray[0];
 
-// Calculate and set queue position based on tier
-await fetch('/api/calculate-queue-position', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    eventId: event.id,
-    tier: tierName,
-    requestId: requestData.id
-  }),
-});
-    
     // Calculate and set queue position based on tier
     await fetch('/api/calculate-queue-position', {
       method: 'POST',
@@ -152,93 +141,88 @@ await fetch('/api/calculate-queue-position', {
       }),
     });
 
-// Continue with rest of code...
-      
-
-
-      // If free request, we're done
-      if (isFreeRequest) {
-        // Decrement host code uses if used
-        if (hostCodeValid) {
-          await supabase
-            .from('events')
-            .update({ 
-              host_code_uses_remaining: event.host_code_uses_remaining - 1 
-            })
-            .eq('id', event.id);
-        }
-
-        setSuccess(true);
-        setTimeout(() => {
-          const code = router.query.code || eventCode;
-          router.push(`/event/${code}`);
-        }, 2000);
-        return;
-      }
-
-      // Process payment for paid requests
-      if (!stripe || !elements) {
-        throw new Error('Stripe not loaded');
-      }
-
-      // Create payment intent
-      const response = await fetch('/api/create-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: amount,
-          eventId: event.id,
-          requestId: requestData.id,
-        }),
-      });
-
-      const { clientSecret, error: intentError } = await response.json();
-      if (intentError) throw new Error(intentError);
-
-      // Confirm payment
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: elements.getElement(CardElement),
-          billing_details: {
-            name: formData.requester_name,
-          },
-        },
-      });
-
-      if (stripeError) {
-        // Payment failed - update request status
+    // If free request, we're done
+    if (isFreeRequest) {
+      // Decrement host code uses if used
+      if (hostCodeValid) {
         await supabase
-          .from('requests')
+          .from('events')
           .update({ 
-            payment_status: 'failed',
-            request_status: 'rejected'
+            host_code_uses_remaining: event.host_code_uses_remaining - 1 
           })
-          .eq('id', requestData.id);
-        
-        throw new Error(stripeError.message);
+          .eq('id', event.id);
       }
-
-      // Payment succeeded - update request
-      await supabase
-        .from('requests')
-        .update({ 
-          payment_status: 'captured',
-          stripe_payment_id: paymentIntent.id
-        })
-        .eq('id', requestData.id);
 
       setSuccess(true);
       setTimeout(() => {
         const code = router.query.code || eventCode;
         router.push(`/event/${code}`);
       }, 2000);
-
-    } catch (err) {
-      setError(err.message);
-      setProcessing(false);
+      return;
     }
-  };
 
+    // Process payment for paid requests
+    if (!stripe || !elements) {
+      throw new Error('Stripe not loaded');
+    }
+
+    // Create payment intent
+    const response = await fetch('/api/create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: amount,
+        eventId: event.id,
+        requestId: requestData.id,
+      }),
+    });
+
+    const { clientSecret, error: intentError } = await response.json();
+    if (intentError) throw new Error(intentError);
+
+    // Confirm payment
+    const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+      payment_method: {
+        card: elements.getElement(CardElement),
+        billing_details: {
+          name: formData.requester_name,
+        },
+      },
+    });
+
+    if (stripeError) {
+      // Payment failed - update request status
+      await supabase
+        .from('requests')
+        .update({ 
+          payment_status: 'failed',
+          request_status: 'rejected'
+        })
+        .eq('id', requestData.id);
+      
+      throw new Error(stripeError.message);
+    }
+
+    // Payment succeeded - update request
+    await supabase
+      .from('requests')
+      .update({ 
+        payment_status: 'captured',
+        stripe_payment_id: paymentIntent.id
+      })
+      .eq('id', requestData.id);
+
+    setSuccess(true);
+    setTimeout(() => {
+      const code = router.query.code || eventCode;
+      router.push(`/event/${code}`);
+    }, 2000);
+
+  } catch (err) {
+    setError(err.message);
+    setProcessing(false);
+  }
+};
   if (loading) {
     return (
       <div style={{
