@@ -6,7 +6,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // Use service role for API routes (bypasses RLS)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // This is the key change!
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export default async function handler(req, res) {
@@ -48,11 +48,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: error.message });
   }
 }
-```
-
-**Get your Service Role Key:**
-1. Go to **Supabase Dashboard → Settings → API**
-2. Copy the **`service_role`** key (NOT the anon key)
-3. Add it to your `.env.local`:
-```
-   SUPABASE_SERVICE_ROLE_KEY=eyJ...your-service-role-key
