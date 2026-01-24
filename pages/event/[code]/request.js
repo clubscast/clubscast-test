@@ -105,29 +105,41 @@ function RequestFormContent({ eventCode }) {
         return;
       }
 
-    const { data: requestDataArray, error: insertError } = await supabase
-      .from('requests')
-      .insert([{
-        event_id: event.id,
-        requester_name: formData.requester_name,
-        song: formData.song,
-        artist: formData.artist,
-        message: formData.message || null,
-        tier_name: tierName,
-        amount: isFreeRequest ? 0 : amount,
-        payment_status: isFreeRequest ? 'free' : 'pending',
-        request_status: 'pending',
-        used_host_code: hostCodeValid
-      }])
-      .select();
+  // Insert request into database first
+const { data: requestDataArray, error: insertError } = await supabase
+  .from('requests')
+  .insert([{
+    event_id: event.id,
+    requester_name: formData.requester_name,
+    song: formData.song,
+    artist: formData.artist,
+    message: formData.message || null,
+    tier_name: tierName,
+    amount: isFreeRequest ? 0 : amount,
+    payment_status: isFreeRequest ? 'free' : 'pending',
+    request_status: 'pending',
+    used_host_code: hostCodeValid
+  }])
+  .select();
 
-    if (insertError) throw insertError;
-    
-    if (!requestDataArray || requestDataArray.length === 0) {
-      throw new Error('No data returned from insert');
-    }
-    
-    requestData = requestDataArray[0];
+if (insertError) throw insertError;
+
+if (!requestDataArray || requestDataArray.length === 0) {
+  throw new Error('No data returned from insert');
+}
+
+const requestData = requestDataArray[0];
+
+// Calculate and set queue position based on tier
+await fetch('/api/calculate-queue-position', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    eventId: event.id,
+    tier: tierName,
+    requestId: requestData.id
+  }),
+});
     
     // Calculate and set queue position based on tier
     await fetch('/api/calculate-queue-position', {
