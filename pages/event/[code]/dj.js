@@ -475,7 +475,7 @@ export default function DJPanel() {
 
           {acceptingStatus !== 'ended' && (
             <button
-              onClick={handleToggle}
+              onClick={handlePauseToggle}
               style={{
                 padding: '12px 24px',
                 background: acceptingStatus === 'paused' 
