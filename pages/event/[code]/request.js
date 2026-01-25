@@ -34,6 +34,9 @@ function RequestFormContent({ eventCode }) {
   useEffect(() => {
     if (eventCode) {
       loadEvent();
+      // Poll for event status changes every 5 seconds
+      const interval = setInterval(loadEvent, 5000);
+      return () => clearInterval(interval);
     }
   }, [eventCode]);
 
