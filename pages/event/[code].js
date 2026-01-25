@@ -56,7 +56,7 @@ export default function EventQueue() {
       .select('*')
       .eq('event_id', eventId)
       .eq('request_status', 'pending')
-      .order('submitted_at', { ascending: true });
+      .order('queue_position', { ascending: true })
 
     setRequests(data || []);
   };
