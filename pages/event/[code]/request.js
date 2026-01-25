@@ -87,220 +87,214 @@ function RequestFormContent({ eventCode }) {
     }
   }, [formData.host_code, event]);
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError('');
-  setProcessing(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setProcessing(true);
 
-  try {
-    const selectedTier = formData.tier;
-    const amount = event[`${selectedTier}_price`];
-    const tierName = event[`${selectedTier}_name`];
-    const isFreeRequest = !event.require_payment || hostCodeValid;
+    try {
+      const selectedTier = formData.tier;
+      const amount = event[`${selectedTier}_price`];
+      const tierName = event[`${selectedTier}_name`];
+      const isFreeRequest = !event.require_payment || hostCodeValid;
 
-    // Check if card info is required but not complete
-    if (!isFreeRequest && !cardComplete) {
-      setError('Please enter your credit card information');
-      setProcessing(false);
-      return;
-    }
+      // Check if card info is required but not complete
+      if (!isFreeRequest && !cardComplete) {
+        setError('Please enter your credit card information');
+        setProcessing(false);
+        return;
+      }
 
-    // Insert request into database first
-    const { data: requestDataArray, error: insertError } = await supabase
-      .from('requests')
-      .insert([{
-        event_id: event.id,
-        requester_name: formData.requester_name,
-        song: formData.song,
-        artist: formData.artist,
-        message: formData.message || null,
-        tier_name: tierName,
-        amount: isFreeRequest ? 0 : amount,
-        payment_status: isFreeRequest ? 'free' : 'pending',
-        request_status: 'pending',
-        used_host_code: hostCodeValid
-      }])
-      .select();
+      // Insert request into database first
+      const { data: requestDataArray, error: insertError } = await supabase
+        .from('requests')
+        .insert([{
+          event_id: event.id,
+          requester_name: formData.requester_name,
+          song: formData.song,
+          artist: formData.artist,
+          message: formData.message || null,
+          tier_name: tierName,
+          amount: isFreeRequest ? 0 : amount,
+          payment_status: isFreeRequest ? 'free' : 'pending',
+          request_status: 'pending',
+          used_host_code: hostCodeValid
+        }])
+        .select();
 
-    if (insertError) throw insertError;
+      if (insertError) throw insertError;
 
-    if (!requestDataArray || requestDataArray.length === 0) {
-      throw new Error('No data returned from insert');
-    }
+      if (!requestDataArray || requestDataArray.length === 0) {
+        throw new Error('No data returned from insert');
+      }
 
-  const requestData = requestDataArray[0];
+      const requestData = requestDataArray[0];
 
-console.log('🎯 Starting queue position calculation');
-console.log('📦 Request ID:', requestData.id);
-console.log('🎵 Event ID:', event.id);
-console.log('🏷️ Tier:', tierName);
+      console.log('🎯 Starting queue position calculation');
+      console.log('📦 Request ID:', requestData.id);
+      console.log('🎵 Event ID:', event.id);
+      console.log('🏷️ Tier:', tierName);
 
-// ===== SIMPLE TIER-BASED QUEUE POSITIONING =====
+      // ===== SIMPLE TIER-BASED QUEUE POSITIONING =====
 
-// Get all current requests for this event
-const { data: existingRequests, error: fetchError } = await supabase
-  .from('requests')
-  .select('id, queue_position, tier_name')
-  .eq('event_id', event.id)
-  .eq('request_status', 'pending')
-  .neq('id', requestData.id)
-  .order('queue_position', { ascending: true, nullsFirst: false });
+      // Get all current requests for this event
+      const { data: existingRequests, error: fetchError } = await supabase
+        .from('requests')
+        .select('id, queue_position, tier_name')
+        .eq('event_id', event.id)
+        .eq('request_status', 'pending')
+        .neq('id', requestData.id)
+        .order('queue_position', { ascending: true, nullsFirst: false });
 
-console.log('📊 Existing requests:', existingRequests?.length);
-console.log('❌ Fetch error:', fetchError);
+      console.log('📊 Existing requests:', existingRequests?.length);
+      console.log('❌ Fetch error:', fetchError);
 
-// Count how many requests we have
-const totalExisting = existingRequests?.length || 0;
+      // Count how many requests we have
+      const totalExisting = existingRequests?.length || 0;
 
-// Count VIP requests
-const vipCount = existingRequests?.filter(r => 
-  r.tier_name.toLowerCase().includes('vip') || 
-  r.tier_name.toLowerCase().includes('tier_3')
-).length || 0;
+      // Count VIP requests
+      const vipCount = existingRequests?.filter(r => 
+        r.tier_name.toLowerCase().includes('vip') || 
+        r.tier_name.toLowerCase().includes('tier_3')
+      ).length || 0;
 
-console.log('📈 Total existing:', totalExisting);
-console.log('👑 VIP count:', vipCount);
+      console.log('📈 Total existing:', totalExisting);
+      console.log('👑 VIP count:', vipCount);
 
-let newPosition;
+      let newPosition;
 
-// Determine position based on tier (host code = VIP)
-const effectiveTier = hostCodeValid ? 'tier_3' : tierName;
+      // Determine position based on tier (host code = VIP)
+      const effectiveTier = hostCodeValid ? 'tier_3' : tierName;
 
-if (effectiveTier.toLowerCase().includes('vip') || effectiveTier.toLowerCase().includes('tier_3')) {
-  newPosition = vipCount + 1;
-  console.log('👑 VIP tier - position:', newPosition);
-  
-} else if (effectiveTier.toLowerCase().includes('priority') || effectiveTier.toLowerCase().includes('tier_2')) {
-  newPosition = Math.max(vipCount + 1, totalExisting - 2);
-  console.log('⚡ Priority tier - position:', newPosition);
-  
-} else {
-  newPosition = totalExisting + 1;
-  console.log('📝 Standard tier - position:', newPosition);
-}
-
-// Shift existing requests down if needed
-if (existingRequests && existingRequests.length > 0) {
-  const requestsToShift = existingRequests.filter(r => 
-    r.queue_position >= newPosition
-  );
-  
-  console.log('🔄 Requests to shift:', requestsToShift.length);
-  
-  for (const req of requestsToShift) {
-    const { error: shiftError } = await supabase
-      .from('requests')
-      .update({ queue_position: req.queue_position + 1 })
-      .eq('id', req.id);
-    
-    if (shiftError) console.error('❌ Shift error:', shiftError);
-  }
-}
-
-// Set new request's position
-console.log('✍️ Setting position to:', newPosition);
-
-const { error: updateError } = await supabase
-  .from('requests')
-  .update({ queue_position: newPosition })
-  .eq('id', requestData.id);
-
-console.log('❌ Update error:', updateError);
-console.log('✅ Position set complete!');
-
-// ===== END QUEUE POSITIONING =====
-
-        console.log('🎯 Starting queue position calculation');
-        console.log('📦 Request ID:', requestData.id);
-        // ... rest of inline queue logic
-        // ... (all the code I provided)
-        console.log('✅ Position set complete!');
+      if (effectiveTier.toLowerCase().includes('vip') || effectiveTier.toLowerCase().includes('tier_3')) {
+        newPosition = vipCount + 1;
+        console.log('👑 VIP tier - position:', newPosition);
         
-        // ===== END QUEUE POSITIONING =====
+      } else if (effectiveTier.toLowerCase().includes('priority') || effectiveTier.toLowerCase().includes('tier_2')) {
+        newPosition = Math.max(vipCount + 1, totalExisting - 2);
+        console.log('⚡ Priority tier - position:', newPosition);
         
+      } else {
+        newPosition = totalExisting + 1;
+        console.log('📝 Standard tier - position:', newPosition);
+      }
+
+      console.log('🎯 Final position:', newPosition);
+
+      // Shift existing requests down if needed
+      if (existingRequests && existingRequests.length > 0) {
+        const requestsToShift = existingRequests.filter(r => 
+          r.queue_position >= newPosition
+        );
+        
+        console.log('🔄 Requests to shift:', requestsToShift.length);
+        
+        for (const req of requestsToShift) {
+          const { error: shiftError } = await supabase
+            .from('requests')
+            .update({ queue_position: req.queue_position + 1 })
+            .eq('id', req.id);
+          
+          if (shiftError) console.error('❌ Shift error:', shiftError);
+        }
+      }
+
+      // Set new request's position
+      console.log('✍️ Setting position to:', newPosition);
+
+      const { error: updateError } = await supabase
+        .from('requests')
+        .update({ queue_position: newPosition })
+        .eq('id', requestData.id);
+
+      console.log('❌ Update error:', updateError);
+      console.log('✅ Position set complete!');
+
+      // ===== END QUEUE POSITIONING =====
+
       // If free request, we're done
       if (isFreeRequest) {
+        // Decrement host code uses if used
+        if (hostCodeValid) {
+          await supabase
+            .from('events')
+            .update({ 
+              host_code_uses_remaining: event.host_code_uses_remaining - 1 
+            })
+            .eq('id', event.id);
+        }
 
-      // Decrement host code uses if used
-      if (hostCodeValid) {
-        await supabase
-          .from('events')
-          .update({ 
-            host_code_uses_remaining: event.host_code_uses_remaining - 1 
-          })
-          .eq('id', event.id);
+        setSuccess(true);
+        setTimeout(() => {
+          const code = router.query.code || eventCode;
+          router.push(`/event/${code}`);
+        }, 2000);
+        return;
       }
+
+      // Process payment for paid requests
+      if (!stripe || !elements) {
+        throw new Error('Stripe not loaded');
+      }
+
+      // Create payment intent
+      const response = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amount,
+          eventId: event.id,
+          requestId: requestData.id,
+        }),
+      });
+
+      const { clientSecret, error: intentError } = await response.json();
+      if (intentError) throw new Error(intentError);
+
+      // Confirm payment
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: elements.getElement(CardElement),
+          billing_details: {
+            name: formData.requester_name,
+          },
+        },
+      });
+
+      if (stripeError) {
+        // Payment failed - update request status
+        await supabase
+          .from('requests')
+          .update({ 
+            payment_status: 'failed',
+            request_status: 'rejected'
+          })
+          .eq('id', requestData.id);
+        
+        throw new Error(stripeError.message);
+      }
+
+      // Payment succeeded - update request
+      await supabase
+        .from('requests')
+        .update({ 
+          payment_status: 'captured',
+          stripe_payment_id: paymentIntent.id
+        })
+        .eq('id', requestData.id);
 
       setSuccess(true);
       setTimeout(() => {
         const code = router.query.code || eventCode;
         router.push(`/event/${code}`);
       }, 2000);
-      return;
+
+    } catch (err) {
+      setError(err.message);
+      setProcessing(false);
     }
+  };
 
-    // Process payment for paid requests
-    if (!stripe || !elements) {
-      throw new Error('Stripe not loaded');
-    }
-
-    // Create payment intent
-    const response = await fetch('/api/create-payment-intent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: amount,
-        eventId: event.id,
-        requestId: requestData.id,
-      }),
-    });
-
-    const { clientSecret, error: intentError } = await response.json();
-    if (intentError) throw new Error(intentError);
-
-    // Confirm payment
-    const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: {
-        card: elements.getElement(CardElement),
-        billing_details: {
-          name: formData.requester_name,
-        },
-      },
-    });
-
-    if (stripeError) {
-      // Payment failed - update request status
-      await supabase
-        .from('requests')
-        .update({ 
-          payment_status: 'failed',
-          request_status: 'rejected'
-        })
-        .eq('id', requestData.id);
-      
-      throw new Error(stripeError.message);
-    }
-
-    // Payment succeeded - update request
-    await supabase
-      .from('requests')
-      .update({ 
-        payment_status: 'captured',
-        stripe_payment_id: paymentIntent.id
-      })
-      .eq('id', requestData.id);
-
-    setSuccess(true);
-    setTimeout(() => {
-      const code = router.query.code || eventCode;
-      router.push(`/event/${code}`);
-    }, 2000);
-
-  } catch (err) {
-    setError(err.message);
-    setProcessing(false);
-  }
-};
   if (loading) {
     return (
       <div style={{
@@ -358,50 +352,155 @@ console.log('✅ Position set complete!');
     );
   }
 
+  // Check if event is paused or ended
+  const acceptingStatus = event.accepting_requests || 'open';
+
+  if (acceptingStatus === 'paused') {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#0b0b0d',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
+        <div style={{
+          background: 'rgba(255,215,0,0.1)',
+          border: '2px solid #FFD700',
+          padding: '40px',
+          borderRadius: '20px',
+          textAlign: 'center',
+          maxWidth: '500px'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>⏸️</div>
+          <h1 style={{ 
+            color: '#FFD700',
+            marginBottom: '20px',
+            fontSize: '28px'
+          }}>
+            Requests Paused
+          </h1>
+          <p style={{ 
+            color: 'rgba(255,255,255,0.8)',
+            marginBottom: '20px',
+            lineHeight: '1.6'
+          }}>
+            {event.pause_message || 'Thank you for all the requests. I am catching up and will open it again soon.'}
+          </p>
+          <button
+            onClick={() => router.push(`/event/${eventCode}`)}
+            style={{
+              padding: '12px 24px',
+              background: 'rgba(255,215,0,0.2)',
+              color: '#FFD700',
+              border: '1px solid #FFD700',
+              borderRadius: '10px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            Back to Queue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (acceptingStatus === 'ended') {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#0b0b0d',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
+        <div style={{
+          background: 'rgba(255,0,110,0.1)',
+          border: '2px solid #ff006e',
+          padding: '40px',
+          borderRadius: '20px',
+          textAlign: 'center',
+          maxWidth: '500px'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🏁</div>
+          <h1 style={{ 
+            color: '#ff006e',
+            marginBottom: '20px',
+            fontSize: '28px'
+          }}>
+            Event Ended
+          </h1>
+          <p style={{ 
+            color: 'rgba(255,255,255,0.8)',
+            marginBottom: '20px',
+            lineHeight: '1.6',
+            whiteSpace: 'pre-wrap'
+          }}>
+            {event.end_message || 'Thanks for an amazing night! This event has ended.'}
+          </p>
+          <button
+            onClick={() => router.push(`/event/${eventCode}`)}
+            style={{
+              padding: '12px 24px',
+              background: 'rgba(255,0,110,0.2)',
+              color: '#ff006e',
+              border: '1px solid #ff006e',
+              borderRadius: '10px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            Back to Queue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const isFreeEvent = !event.require_payment;
   const isFreeRequest = isFreeEvent || hostCodeValid;
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0b0b0d 0%, #1a0a1f 100%)',
-      color: '#eef',
+      background: '#0b0b0d',
       padding: '20px',
       fontFamily: '-apple-system, sans-serif'
     }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto', paddingTop: '40px' }}>
-        
+      <div style={{
+        maxWidth: '600px',
+        margin: '0 auto',
+        paddingTop: '40px'
+      }}>
         <div style={{
-          textAlign: 'center',
-          marginBottom: '30px'
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,0,110,0.2)',
+          borderRadius: '20px',
+          padding: '40px'
         }}>
           <h1 style={{
+            color: '#ff6b35',
+            marginBottom: '10px',
             fontSize: '32px',
-            fontWeight: '700',
-            background: 'linear-gradient(135deg, #ff006e, #00f5ff)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            marginBottom: '10px'
+            textAlign: 'center'
           }}>
             Request a Song
           </h1>
           <p style={{
             color: 'rgba(255,255,255,0.6)',
-            fontSize: '16px'
+            textAlign: 'center',
+            marginBottom: '30px',
+            fontSize: '14px'
           }}>
             {event.event_name}
           </p>
-        </div>
 
-        <div style={{
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '20px',
-          padding: '30px',
-          backdropFilter: 'blur(10px)'
-        }}>
           <form onSubmit={handleSubmit}>
-            
             <input
               type="text"
               placeholder="Your Name"
@@ -415,7 +514,7 @@ console.log('✅ Position set complete!');
                 padding: '14px',
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 color: 'white',
                 fontSize: '16px',
                 marginBottom: '15px'
@@ -435,7 +534,7 @@ console.log('✅ Position set complete!');
                 padding: '14px',
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 color: 'white',
                 fontSize: '16px',
                 marginBottom: '15px'
@@ -455,7 +554,7 @@ console.log('✅ Position set complete!');
                 padding: '14px',
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 color: 'white',
                 fontSize: '16px',
                 marginBottom: '15px'
@@ -463,35 +562,29 @@ console.log('✅ Position set complete!');
             />
 
             <textarea
-              placeholder="Message or dedication (optional)"
+              placeholder="Message (Optional)"
               value={formData.message}
               onChange={(e) => setFormData({...formData, message: e.target.value})}
-              rows="3"
               disabled={processing}
+              rows="3"
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
                 padding: '14px',
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 color: 'white',
                 fontSize: '16px',
-                marginBottom: '15px',
+                marginBottom: '20px',
                 resize: 'vertical',
                 fontFamily: '-apple-system, sans-serif'
               }}
             />
 
-            {/* Host Code Section */}
+            {/* Host Code Input */}
             {event.host_code && (
-              <div style={{
-                padding: '15px',
-                background: 'rgba(255,215,0,0.05)',
-                border: `1px solid ${hostCodeValid ? '#00ff88' : 'rgba(255,215,0,0.2)'}`,
-                borderRadius: '10px',
-                marginBottom: '15px'
-              }}>
+              <div style={{ marginBottom: '20px' }}>
                 <label style={{
                   display: 'block',
                   color: 'rgba(255,255,255,0.7)',
@@ -540,108 +633,108 @@ console.log('✅ Position set complete!');
               </div>
             )}
 
-         {/* Pricing Tiers - Only show if payment required and no valid host code */}
-        {event.require_payment && !hostCodeValid && (
-          <div style={{
-            padding: '15px',
-            background: 'rgba(255,0,110,0.05)',
-            border: '1px solid rgba(255,0,110,0.2)',
-            borderRadius: '10px',
-            marginBottom: '20px'
-          }}>
-            <label style={{
-              display: 'block',
-              color: 'rgba(255,255,255,0.7)',
-              fontSize: '14px',
-              marginBottom: '12px'
+          {/* Pricing Tiers - Only show if payment required and no valid host code */}
+          {event.require_payment && !hostCodeValid && (
+            <div style={{
+              padding: '15px',
+              background: 'rgba(255,0,110,0.05)',
+              border: '1px solid rgba(255,0,110,0.2)',
+              borderRadius: '10px',
+              marginBottom: '20px'
             }}>
-              Select Tier
-            </label>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[
-                { key: 'tier_1', desc: 'Goes to bottom of queue' },
-                { key: 'tier_2', desc: 'Jumps 3 songs up the queue' },
-                { key: 'tier_3', desc: 'Goes to top (below other VIPs)' }
-              ].map(tier => (
-                <label
-                  key={tier.key}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '12px',
-                    background: formData.tier === tier.key ? 'rgba(255,0,110,0.2)' : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${formData.tier === tier.key ? '#ff006e' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: '8px',
-                    cursor: processing ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s',
-                    opacity: processing ? 0.5 : 1
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="tier"
-                    value={tier.key}
-                    checked={formData.tier === tier.key}
-                    onChange={(e) => setFormData({...formData, tier: e.target.value})}
-                    disabled={processing}
-                    style={{ marginRight: '10px' }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      color: 'white',
-                      fontWeight: '600',
-                      marginBottom: '4px'
-                    }}>
-                      {event[`${tier.key}_name`]}
+              <label style={{
+                display: 'block',
+                color: 'rgba(255,255,255,0.7)',
+                fontSize: '14px',
+                marginBottom: '12px'
+              }}>
+                Select Tier
+              </label>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {[
+                  { key: 'tier_1', desc: 'Goes to bottom of queue' },
+                  { key: 'tier_2', desc: 'Jumps 3 songs up the queue' },
+                  { key: 'tier_3', desc: 'Goes to top (below other VIPs)' }
+                ].map(tier => (
+                  <label
+                    key={tier.key}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '12px',
+                      background: formData.tier === tier.key ? 'rgba(255,0,110,0.2)' : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${formData.tier === tier.key ? '#ff006e' : 'rgba(255,255,255,0.1)'}`,
+                      borderRadius: '8px',
+                      cursor: processing ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: processing ? 0.5 : 1
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="tier"
+                      value={tier.key}
+                      checked={formData.tier === tier.key}
+                      onChange={(e) => setFormData({...formData, tier: e.target.value})}
+                      disabled={processing}
+                      style={{ marginRight: '10px' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        color: 'white',
+                        fontWeight: '600',
+                        marginBottom: '4px'
+                      }}>
+                        {event[`${tier.key}_name`]}
+                      </div>
+                      <div style={{
+                        color: 'rgba(255,255,255,0.5)',
+                        fontSize: '12px'
+                      }}>
+                        {tier.desc}
+                      </div>
                     </div>
-                    <div style={{
-                      color: 'rgba(255,255,255,0.5)',
-                      fontSize: '12px'
+                    <span style={{
+                      color: '#00f5ff',
+                      fontWeight: '700',
+                      fontSize: '18px'
                     }}>
-                      {tier.desc}
-                    </div>
-                  </div>
-                  <span style={{
-                    color: '#00f5ff',
-                    fontWeight: '700',
-                    fontSize: '18px'
-                  }}>
-                    ${event[`${tier.key}_price`]}
-                  </span>
-                </label>
-              ))}
+                      ${event[`${tier.key}_price`]}
+                    </span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Host Code gets VIP automatically */}
-        {hostCodeValid && (
-          <div style={{
-            padding: '15px',
-            background: 'rgba(255,215,0,0.1)',
-            border: '1px solid rgba(255,215,0,0.3)',
-            borderRadius: '10px',
-            marginBottom: '20px',
-            textAlign: 'center'
-          }}>
-            <p style={{
-              color: '#FFD700',
-              fontSize: '16px',
-              fontWeight: '600',
-              margin: '0 0 5px 0'
+          {/* Host Code gets VIP automatically */}
+          {hostCodeValid && (
+            <div style={{
+              padding: '15px',
+              background: 'rgba(255,215,0,0.1)',
+              border: '1px solid rgba(255,215,0,0.3)',
+              borderRadius: '10px',
+              marginBottom: '20px',
+              textAlign: 'center'
             }}>
-              🎉 VIP Access Granted!
-            </p>
-            <p style={{
-              color: 'rgba(255,255,255,0.7)',
-              fontSize: '13px',
-              margin: '0'
-            }}>
-              Your request will go to the top of the queue
-            </p>
-          </div>
-        )}
+              <p style={{
+                color: '#FFD700',
+                fontSize: '16px',
+                fontWeight: '600',
+                margin: '0 0 5px 0'
+              }}>
+                🎉 VIP Access Granted!
+              </p>
+              <p style={{
+                color: 'rgba(255,255,255,0.7)',
+                fontSize: '13px',
+                margin: '0'
+              }}>
+                Your request will go to the top of the queue
+              </p>
+            </div>
+          )}
 
             {/* Payment Card - Only show if payment required and no valid host code */}
             {event.require_payment && !hostCodeValid && (
