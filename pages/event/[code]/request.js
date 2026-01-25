@@ -210,19 +210,19 @@ console.log('✅ Position set complete!');
 
 // ===== END QUEUE POSITIONING =====
 
-    // Calculate and set queue position based on tier
-    await fetch('/api/calculate-queue-position', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        eventId: event.id,
-        tier: tierName,
-        requestId: requestData.id
-      }),
-    });
+   const requestData = requestDataArray[0];
 
-    // If free request, we're done
-    if (isFreeRequest) {
+        console.log('🎯 Starting queue position calculation');
+        console.log('📦 Request ID:', requestData.id);
+        // ... rest of inline queue logic
+        // ... (all the code I provided)
+        console.log('✅ Position set complete!');
+        
+        // ===== END QUEUE POSITIONING =====
+        
+      // If free request, we're done
+      if (isFreeRequest) {
+
       // Decrement host code uses if used
       if (hostCodeValid) {
         await supabase
