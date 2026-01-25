@@ -15,6 +15,8 @@ export default function DJPanel() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
   const [endMessage, setEndMessage] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
 
   const [editForm, setEditForm] = useState({
     event_name: '',
@@ -32,11 +34,25 @@ export default function DJPanel() {
     require_payment: true
   });
 
-  useEffect(() => {
-    if (code) {
-      loadEvent();
+ useEffect(() => {
+  if (code) {
+    loadEvent();
+    checkRememberedPassword();
+  }
+}, [code]);
+
+const checkRememberedPassword = () => {
+  const stored = localStorage.getItem(`dj_auth_${code}`);
+  if (stored) {
+    const { password: savedPassword, expiry } = JSON.parse(stored);
+    if (Date.now() < expiry) {
+      setPassword(savedPassword);
+      setAuthenticated(true);
+    } else {
+      localStorage.removeItem(`dj_auth_${code}`);
     }
-  }, [code]);
+  }
+};
 
   useEffect(() => {
     if (authenticated && event) {
@@ -93,15 +109,24 @@ export default function DJPanel() {
     setRequests(data || []);
   };
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (password === event.dj_password) {
-      setAuthenticated(true);
-      setError('');
-    } else {
-      setError('Incorrect password');
+ const handleLogin = (e) => {
+  e.preventDefault();
+  if (password === event.dj_password) {
+    setAuthenticated(true);
+    setError('');
+    
+    // Save password if Remember Me is checked
+    if (rememberMe) {
+      const expiry = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
+      localStorage.setItem(`dj_auth_${code}`, JSON.stringify({
+        password: password,
+        expiry: expiry
+      }));
     }
-  };
+  } else {
+    setError('Incorrect password');
+  }
+};
 
   const handleApprove = async (requestId) => {
     const { error } = await supabase
@@ -189,6 +214,12 @@ export default function DJPanel() {
       setShowEditModal(false);
     }
   };
+  
+    const handleLogout = () => {
+    localStorage.removeItem(`dj_auth_${code}`);
+    setAuthenticated(false);
+    setPassword('');
+  };
 
   if (loading) {
     return (
@@ -268,6 +299,23 @@ export default function DJPanel() {
                 {error}
               </p>
             )}
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '20px',
+                color: 'rgba(255,255,255,0.7)',
+                fontSize: '14px',
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                Remember me for 24 hours
+              </label>
             <button
               type="submit"
               style={{
@@ -389,7 +437,21 @@ export default function DJPanel() {
             </button>
           </div>
         </div>
-
+          <button
+          onClick={handleLogout}
+          style={{
+            padding: '10px 20px',
+            background: 'rgba(255,0,0,0.2)',
+            color: '#ff6b6b',
+            border: '1px solid rgba(255,0,0,0.3)',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600'
+          }}
+        >
+          Logout
+        </button>
         {/* Control Buttons */}
         <div style={{
           display: 'flex',
