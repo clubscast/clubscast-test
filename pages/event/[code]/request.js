@@ -128,7 +128,87 @@ const handleSubmit = async (e) => {
       throw new Error('No data returned from insert');
     }
 
-    const requestData = requestDataArray[0];
+  const requestData = requestDataArray[0];
+
+console.log('🎯 Starting queue position calculation');
+console.log('📦 Request ID:', requestData.id);
+console.log('🎵 Event ID:', event.id);
+console.log('🏷️ Tier:', tierName);
+
+// ===== SIMPLE TIER-BASED QUEUE POSITIONING =====
+
+// Get all current requests for this event
+const { data: existingRequests, error: fetchError } = await supabase
+  .from('requests')
+  .select('id, queue_position, tier_name')
+  .eq('event_id', event.id)
+  .eq('request_status', 'pending')
+  .neq('id', requestData.id)
+  .order('queue_position', { ascending: true, nullsFirst: false });
+
+console.log('📊 Existing requests:', existingRequests?.length);
+console.log('❌ Fetch error:', fetchError);
+
+// Count how many requests we have
+const totalExisting = existingRequests?.length || 0;
+
+// Count VIP requests
+const vipCount = existingRequests?.filter(r => 
+  r.tier_name.toLowerCase().includes('vip') || 
+  r.tier_name.toLowerCase().includes('tier_3')
+).length || 0;
+
+console.log('📈 Total existing:', totalExisting);
+console.log('👑 VIP count:', vipCount);
+
+let newPosition;
+
+// Determine position based on tier
+if (tierName.toLowerCase().includes('vip') || tierName.toLowerCase().includes('tier_3')) {
+  newPosition = vipCount + 1;
+  console.log('👑 VIP tier - position:', newPosition);
+  
+} else if (tierName.toLowerCase().includes('priority') || tierName.toLowerCase().includes('tier_2')) {
+  newPosition = Math.max(vipCount + 1, totalExisting - 2);
+  console.log('⚡ Priority tier - position:', newPosition);
+  
+} else {
+  newPosition = totalExisting + 1;
+  console.log('📝 Standard tier - position:', newPosition);
+}
+
+console.log('🎯 Final position:', newPosition);
+
+// Shift existing requests down if needed
+if (existingRequests && existingRequests.length > 0) {
+  const requestsToShift = existingRequests.filter(r => 
+    r.queue_position >= newPosition
+  );
+  
+  console.log('🔄 Requests to shift:', requestsToShift.length);
+  
+  for (const req of requestsToShift) {
+    const { error: shiftError } = await supabase
+      .from('requests')
+      .update({ queue_position: req.queue_position + 1 })
+      .eq('id', req.id);
+    
+    if (shiftError) console.error('❌ Shift error:', shiftError);
+  }
+}
+
+// Set new request's position
+console.log('✍️ Setting position to:', newPosition);
+
+const { error: updateError } = await supabase
+  .from('requests')
+  .update({ queue_position: newPosition })
+  .eq('id', requestData.id);
+
+console.log('❌ Update error:', updateError);
+console.log('✅ Position set complete!');
+
+// ===== END QUEUE POSITIONING =====
 
     // Calculate and set queue position based on tier
     await fetch('/api/calculate-queue-position', {
