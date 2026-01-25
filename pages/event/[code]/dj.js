@@ -15,6 +15,22 @@ export default function DJPanel() {
   const [error, setError] = useState('');
   const [showEndEventModal, setShowEndEventModal] = useState(false);
   const [endEventMessage, setEndEventMessage] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    event_name: '',
+    event_date: '',
+    venue: '',
+    tier_1_name: '',
+    tier_1_price: '',
+    tier_2_name: '',
+    tier_2_price: '',
+    tier_3_name: '',
+    tier_3_price: '',
+    host_code: '',
+    host_code_uses_total: '',
+    host_code_color: '#FFD700',
+    require_payment: true
+  });
 
   useEffect(() => {
     if (code) {
@@ -61,6 +77,24 @@ export default function DJPanel() {
 
       if (eventError) throw eventError;
       setEvent(eventData);
+      
+      // Initialize edit form with current values
+      setEditForm({
+        event_name: eventData.event_name || '',
+        event_date: eventData.event_date || '',
+        venue: eventData.venue || '',
+        tier_1_name: eventData.tier_1_name || '',
+        tier_1_price: eventData.tier_1_price || '',
+        tier_2_name: eventData.tier_2_name || '',
+        tier_2_price: eventData.tier_2_price || '',
+        tier_3_name: eventData.tier_3_name || '',
+        tier_3_price: eventData.tier_3_price || '',
+        host_code: eventData.host_code || '',
+        host_code_uses_total: eventData.host_code_uses_total || '',
+        host_code_color: eventData.host_code_color || '#FFD700',
+        require_payment: eventData.require_payment
+      });
+      
       setLoading(false);
     } catch (err) {
       setError(err.message);
@@ -164,6 +198,35 @@ export default function DJPanel() {
       setEvent({...event, accepting_requests: 'ended', end_message: endEventMessage});
       setShowEndEventModal(false);
       setEndEventMessage('');
+    }
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    
+    const { error } = await supabase
+      .from('events')
+      .update({
+        event_name: editForm.event_name,
+        event_date: editForm.event_date,
+        venue: editForm.venue,
+        tier_1_name: editForm.tier_1_name,
+        tier_1_price: parseFloat(editForm.tier_1_price),
+        tier_2_name: editForm.tier_2_name,
+        tier_2_price: parseFloat(editForm.tier_2_price),
+        tier_3_name: editForm.tier_3_name,
+        tier_3_price: parseFloat(editForm.tier_3_price),
+        host_code: editForm.host_code || null,
+        host_code_uses_total: parseInt(editForm.host_code_uses_total) || 0,
+        host_code_uses_remaining: parseInt(editForm.host_code_uses_total) || 0,
+        host_code_color: editForm.host_code_color,
+        require_payment: editForm.require_payment
+      })
+      .eq('id', event.id);
+
+    if (!error) {
+      loadEvent();
+      setShowEditModal(false);
     }
   };
 
@@ -379,6 +442,23 @@ export default function DJPanel() {
           marginBottom: '20px',
           flexWrap: 'wrap'
         }}>
+          <button
+            onClick={() => setShowEditModal(true)}
+            style={{
+              padding: '12px 24px',
+              background: 'linear-gradient(135deg, #00f5ff, #0099ff)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '15px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              boxShadow: '0 4px 15px rgba(0,245,255,0.3)'
+            }}
+          >
+            ✏️ Edit Event
+          </button>
+
           {acceptingStatus !== 'ended' && (
             <button
               onClick={handlePauseToggle}
@@ -548,6 +628,271 @@ export default function DJPanel() {
                   Cancel
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Event Modal */}
+        {showEditModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px',
+            overflow: 'auto'
+          }}>
+            <div style={{
+              background: '#0b0b0d',
+              border: '2px solid rgba(0,245,255,0.3)',
+              borderRadius: '20px',
+              padding: '40px',
+              maxWidth: '600px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'auto'
+            }}>
+              <h2 style={{
+                color: '#00f5ff',
+                marginBottom: '20px',
+                textAlign: 'center'
+              }}>
+                Edit Event Settings
+              </h2>
+              
+              <form onSubmit={handleSaveEdit}>
+                <input
+                  type="text"
+                  placeholder="Event Name"
+                  value={editForm.event_name}
+                  onChange={(e) => setEditForm({...editForm, event_name: e.target.value})}
+                  required
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '12px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    marginBottom: '15px'
+                  }}
+                />
+
+                <input
+                  type="datetime-local"
+                  value={editForm.event_date}
+                  onChange={(e) => setEditForm({...editForm, event_date: e.target.value})}
+                  required
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '12px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    marginBottom: '15px'
+                  }}
+                />
+
+                <input
+                  type="text"
+                  placeholder="Venue"
+                  value={editForm.venue}
+                  onChange={(e) => setEditForm({...editForm, venue: e.target.value})}
+                  required
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '12px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    marginBottom: '20px'
+                  }}
+                />
+
+                <div style={{
+                  padding: '15px',
+                  background: 'rgba(255,0,110,0.05)',
+                  border: '1px solid rgba(255,0,110,0.2)',
+                  borderRadius: '10px',
+                  marginBottom: '20px'
+                }}>
+                  <h3 style={{ fontSize: '14px', color: '#ff006e', marginBottom: '15px' }}>Pricing Tiers</h3>
+                  
+                  {['tier_1', 'tier_2', 'tier_3'].map(tier => (
+                    <div key={tier} style={{ marginBottom: '15px' }}>
+                      <input
+                        type="text"
+                        placeholder={`${tier} Name`}
+                        value={editForm[`${tier}_name`]}
+                        onChange={(e) => setEditForm({...editForm, [`${tier}_name`]: e.target.value})}
+                        required
+                        style={{
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          padding: '10px',
+                          background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '6px',
+                          color: 'white',
+                          fontSize: '13px',
+                          marginBottom: '8px'
+                        }}
+                      />
+                      <input
+                        type="number"
+                        placeholder="Price"
+                        value={editForm[`${tier}_price`]}
+                        onChange={(e) => setEditForm({...editForm, [`${tier}_price`]: e.target.value})}
+                        required
+                        min="0"
+                        step="0.01"
+                        style={{
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          padding: '10px',
+                          background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '6px',
+                          color: 'white',
+                          fontSize: '13px'
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{
+                  padding: '15px',
+                  background: 'rgba(255,215,0,0.05)',
+                  border: '1px solid rgba(255,215,0,0.2)',
+                  borderRadius: '10px',
+                  marginBottom: '20px'
+                }}>
+                  <h3 style={{ fontSize: '14px', color: '#FFD700', marginBottom: '15px' }}>Host Code (Optional)</h3>
+                  
+                  <input
+                    type="text"
+                    placeholder="Host Code"
+                    value={editForm.host_code}
+                    onChange={(e) => setEditForm({...editForm, host_code: e.target.value.toUpperCase()})}
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      padding: '10px',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '6px',
+                      color: 'white',
+                      fontSize: '13px',
+                      marginBottom: '10px'
+                    }}
+                  />
+
+                  <input
+                    type="number"
+                    placeholder="Total Uses"
+                    value={editForm.host_code_uses_total}
+                    onChange={(e) => setEditForm({...editForm, host_code_uses_total: e.target.value})}
+                    min="0"
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      padding: '10px',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '6px',
+                      color: 'white',
+                      fontSize: '13px',
+                      marginBottom: '10px'
+                    }}
+                  />
+
+                  <div>
+                    <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', display: 'block', marginBottom: '5px' }}>
+                      Color
+                    </label>
+                    <input
+                      type="color"
+                      value={editForm.host_code_color}
+                      onChange={(e) => setEditForm({...editForm, host_code_color: e.target.value})}
+                      style={{
+                        width: '60px',
+                        height: '40px',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: '6px',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  marginBottom: '25px',
+                  cursor: 'pointer',
+                  color: 'rgba(255,255,255,0.9)'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={editForm.require_payment}
+                    onChange={(e) => setEditForm({...editForm, require_payment: e.target.checked})}
+                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                  />
+                  Require payment for requests
+                </label>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="submit"
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      background: 'linear-gradient(135deg, #00f5ff, #0099ff)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Save Changes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      background: 'rgba(255,255,255,0.1)',
+                      color: 'white',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '10px',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
