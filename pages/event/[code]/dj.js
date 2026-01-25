@@ -456,7 +456,7 @@ export default function DJPanel() {
               boxShadow: '0 4px 15px rgba(0,245,255,0.3)'
             }}
           >
-            ✏️ Edit Event
+            Edit Event
           </button>
 
           {acceptingStatus !== 'ended' && (
@@ -495,7 +495,7 @@ export default function DJPanel() {
                 boxShadow: '0 4px 15px rgba(255,0,110,0.3)'
               }}
             >
-              🏁 End Event
+              End Event
             </button>
           )}
 
@@ -524,10 +524,10 @@ export default function DJPanel() {
                 : '#00ff88'
           }}>
             {acceptingStatus === 'ended' 
-              ? '🔴 Event Ended'
+              ? 'Event Ended'
               : acceptingStatus === 'paused'
-                ? '⏸️ Paused'
-                : '🟢 Accepting Requests'}
+                ? 'Paused'
+                : 'Accepting Requests'}
           </div>
         </div>
 
