@@ -476,7 +476,7 @@ export default function DJPanel() {
                 boxShadow: '0 4px 15px rgba(255,215,0,0.3)'
               }}
             >
-              {acceptingStatus === 'paused' ? '▶️ Resume Requests' : '⏸️ Pause Requests'}
+              {acceptingStatus === 'paused' ? 'Resume Requests' : 'Pause Requests'}
             </button>
           )}
           
