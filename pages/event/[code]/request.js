@@ -163,12 +163,14 @@ console.log('👑 VIP count:', vipCount);
 
 let newPosition;
 
-// Determine position based on tier
-if (tierName.toLowerCase().includes('vip') || tierName.toLowerCase().includes('tier_3')) {
+// Determine position based on tier (host code = VIP)
+const effectiveTier = hostCodeValid ? 'tier_3' : tierName;
+
+if (effectiveTier.toLowerCase().includes('vip') || effectiveTier.toLowerCase().includes('tier_3')) {
   newPosition = vipCount + 1;
   console.log('👑 VIP tier - position:', newPosition);
   
-} else if (tierName.toLowerCase().includes('priority') || tierName.toLowerCase().includes('tier_2')) {
+} else if (effectiveTier.toLowerCase().includes('priority') || effectiveTier.toLowerCase().includes('tier_2')) {
   newPosition = Math.max(vipCount + 1, totalExisting - 2);
   console.log('⚡ Priority tier - position:', newPosition);
   
@@ -176,8 +178,6 @@ if (tierName.toLowerCase().includes('vip') || tierName.toLowerCase().includes('t
   newPosition = totalExisting + 1;
   console.log('📝 Standard tier - position:', newPosition);
 }
-
-console.log('🎯 Final position:', newPosition);
 
 // Shift existing requests down if needed
 if (existingRequests && existingRequests.length > 0) {
@@ -540,80 +540,108 @@ console.log('✅ Position set complete!');
               </div>
             )}
 
-          {/* Pricing Tiers - Only show if payment required and no valid host code */}
-          {event.require_payment && !hostCodeValid && (
-            <div style={{
-              padding: '15px',
-              background: 'rgba(255,0,110,0.05)',
-              border: '1px solid rgba(255,0,110,0.2)',
-              borderRadius: '10px',
-              marginBottom: '20px'
+         {/* Pricing Tiers - Only show if payment required and no valid host code */}
+        {event.require_payment && !hostCodeValid && (
+          <div style={{
+            padding: '15px',
+            background: 'rgba(255,0,110,0.05)',
+            border: '1px solid rgba(255,0,110,0.2)',
+            borderRadius: '10px',
+            marginBottom: '20px'
+          }}>
+            <label style={{
+              display: 'block',
+              color: 'rgba(255,255,255,0.7)',
+              fontSize: '14px',
+              marginBottom: '12px'
             }}>
-              <label style={{
-                display: 'block',
-                color: 'rgba(255,255,255,0.7)',
-                fontSize: '14px',
-                marginBottom: '12px'
-              }}>
-                Select Tier
-              </label>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {[
-                  { key: 'tier_1', desc: 'Goes to bottom of queue' },
-                  { key: 'tier_2', desc: 'Jumps 3 songs up the queue' },
-                  { key: 'tier_3', desc: 'Goes to top (below other VIPs)' }
-                ].map(tier => (
-                  <label
-                    key={tier.key}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '12px',
-                      background: formData.tier === tier.key ? 'rgba(255,0,110,0.2)' : 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${formData.tier === tier.key ? '#ff006e' : 'rgba(255,255,255,0.1)'}`,
-                      borderRadius: '8px',
-                      cursor: processing ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s',
-                      opacity: processing ? 0.5 : 1
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="tier"
-                      value={tier.key}
-                      checked={formData.tier === tier.key}
-                      onChange={(e) => setFormData({...formData, tier: e.target.value})}
-                      disabled={processing}
-                      style={{ marginRight: '10px' }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <div style={{
-                        color: 'white',
-                        fontWeight: '600',
-                        marginBottom: '4px'
-                      }}>
-                        {event[`${tier.key}_name`]}
-                      </div>
-                      <div style={{
-                        color: 'rgba(255,255,255,0.5)',
-                        fontSize: '12px'
-                      }}>
-                        {tier.desc}
-                      </div>
-                    </div>
-                    <span style={{
-                      color: '#00f5ff',
-                      fontWeight: '700',
-                      fontSize: '18px'
+              Select Tier
+            </label>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                { key: 'tier_1', desc: 'Goes to bottom of queue' },
+                { key: 'tier_2', desc: 'Jumps 3 songs up the queue' },
+                { key: 'tier_3', desc: 'Goes to top (below other VIPs)' }
+              ].map(tier => (
+                <label
+                  key={tier.key}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '12px',
+                    background: formData.tier === tier.key ? 'rgba(255,0,110,0.2)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${formData.tier === tier.key ? '#ff006e' : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: '8px',
+                    cursor: processing ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    opacity: processing ? 0.5 : 1
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="tier"
+                    value={tier.key}
+                    checked={formData.tier === tier.key}
+                    onChange={(e) => setFormData({...formData, tier: e.target.value})}
+                    disabled={processing}
+                    style={{ marginRight: '10px' }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      color: 'white',
+                      fontWeight: '600',
+                      marginBottom: '4px'
                     }}>
-                      ${event[`${tier.key}_price`]}
-                    </span>
-                  </label>
-                ))}
-              </div>
+                      {event[`${tier.key}_name`]}
+                    </div>
+                    <div style={{
+                      color: 'rgba(255,255,255,0.5)',
+                      fontSize: '12px'
+                    }}>
+                      {tier.desc}
+                    </div>
+                  </div>
+                  <span style={{
+                    color: '#00f5ff',
+                    fontWeight: '700',
+                    fontSize: '18px'
+                  }}>
+                    ${event[`${tier.key}_price`]}
+                  </span>
+                </label>
+              ))}
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Host Code gets VIP automatically */}
+        {hostCodeValid && (
+          <div style={{
+            padding: '15px',
+            background: 'rgba(255,215,0,0.1)',
+            border: '1px solid rgba(255,215,0,0.3)',
+            borderRadius: '10px',
+            marginBottom: '20px',
+            textAlign: 'center'
+          }}>
+            <p style={{
+              color: '#FFD700',
+              fontSize: '16px',
+              fontWeight: '600',
+              margin: '0 0 5px 0'
+            }}>
+              🎉 VIP Access Granted!
+            </p>
+            <p style={{
+              color: 'rgba(255,255,255,0.7)',
+              fontSize: '13px',
+              margin: '0'
+            }}>
+              Your request will go to the top of the queue
+            </p>
+          </div>
+        )}
 
             {/* Payment Card - Only show if payment required and no valid host code */}
             {event.require_payment && !hostCodeValid && (
