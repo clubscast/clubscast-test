@@ -230,6 +230,20 @@ export default function DJPanel() {
     }
   };
 
+  const handleReopenEvent = async () => {
+    const { error } = await supabase
+      .from('events')
+      .update({ 
+        accepting_requests: 'open',
+        end_message: null
+      })
+      .eq('id', event.id);
+
+    if (!error) {
+      setEvent({...event, accepting_requests: 'open', end_message: null});
+    }
+  };
+
   if (loading) {
     return (
       <div style={{
@@ -456,7 +470,7 @@ export default function DJPanel() {
               boxShadow: '0 4px 15px rgba(0,245,255,0.3)'
             }}
           >
-            Edit Event
+            ✏️ Edit Event
           </button>
 
           {acceptingStatus !== 'ended' && (
@@ -476,7 +490,7 @@ export default function DJPanel() {
                 boxShadow: '0 4px 15px rgba(255,215,0,0.3)'
               }}
             >
-              {acceptingStatus === 'paused' ? 'Resume Requests' : 'Pause Requests'}
+              {acceptingStatus === 'paused' ? '▶️ Resume Requests' : '⏸️ Pause Requests'}
             </button>
           )}
           
@@ -495,7 +509,26 @@ export default function DJPanel() {
                 boxShadow: '0 4px 15px rgba(255,0,110,0.3)'
               }}
             >
-              End Event
+              🏁 End Event
+            </button>
+          )}
+
+          {acceptingStatus === 'ended' && (
+            <button
+              onClick={handleReopenEvent}
+              style={{
+                padding: '12px 24px',
+                background: 'linear-gradient(135deg, #00ff88, #00cc6a)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                fontSize: '15px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(0,255,136,0.3)'
+              }}
+            >
+              🔓 Reopen Event
             </button>
           )}
 
@@ -524,10 +557,10 @@ export default function DJPanel() {
                 : '#00ff88'
           }}>
             {acceptingStatus === 'ended' 
-              ? 'Event Ended'
+              ? '🔴 Event Ended'
               : acceptingStatus === 'paused'
-                ? 'Paused'
-                : 'Accepting Requests'}
+                ? '⏸️ Paused'
+                : '🟢 Accepting Requests'}
           </div>
         </div>
 
