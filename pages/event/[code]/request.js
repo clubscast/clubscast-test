@@ -210,8 +210,6 @@ console.log('✅ Position set complete!');
 
 // ===== END QUEUE POSITIONING =====
 
-   const requestData = requestDataArray[0];
-
         console.log('🎯 Starting queue position calculation');
         console.log('📦 Request ID:', requestData.id);
         // ... rest of inline queue logic
