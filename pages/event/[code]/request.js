@@ -376,7 +376,7 @@ function RequestFormContent({ eventCode }) {
           textAlign: 'center',
           maxWidth: '500px'
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}>⏸️</div>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}></div>
           <h1 style={{ 
             color: '#FFD700',
             marginBottom: '20px',
@@ -429,7 +429,7 @@ function RequestFormContent({ eventCode }) {
           textAlign: 'center',
           maxWidth: '500px'
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🏁</div>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}></div>
           <h1 style={{ 
             color: '#ff006e',
             marginBottom: '20px',
@@ -727,7 +727,7 @@ function RequestFormContent({ eventCode }) {
                 fontWeight: '600',
                 margin: '0 0 5px 0'
               }}>
-                🎉 VIP Access Granted!
+                 VIP Access Granted!
               </p>
               <p style={{
                 color: 'rgba(255,255,255,0.7)',
