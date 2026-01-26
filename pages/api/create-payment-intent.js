@@ -15,9 +15,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { amount, eventId, requestId } = req.body;
+    const { djPrice, totalAmount, eventId, requestId } = req.body;
 
-    if (!amount || !eventId || !requestId) {
+    if (!djPrice || !totalAmount || !eventId || !requestId) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -54,20 +54,23 @@ export default async function handler(req, res) {
       });
     }
 
-    // Create payment intent on PLATFORM account with destination charge
+    // Create payment intent with MANUAL CAPTURE (authorization only)
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert to cents
+      amount: Math.round(totalAmount * 100), // Total amount customer pays
       currency: 'usd',
       automatic_payment_methods: {
         enabled: true,
       },
-      application_fee_amount: Math.round(amount * 100 * 0.10), // 10% platform fee (adjust as needed)
+      capture_method: 'manual', // AUTHORIZATION ONLY - must be captured later
       transfer_data: {
-        destination: dj.stripe_account_id, // Send money to DJ's account
+        amount: Math.round(djPrice * 100), // DJ gets their set price
+        destination: dj.stripe_account_id,
       },
       metadata: {
         eventId: String(eventId),
         requestId: String(requestId),
+        djPrice: String(djPrice),
+        serviceFee: String(totalAmount - djPrice),
       },
     });
 
