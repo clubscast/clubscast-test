@@ -18,6 +18,7 @@ function RequestFormContent({ eventCode }) {
   const [processing, setProcessing] = useState(false);
   const [cardError, setCardError] = useState('');
   const [cardComplete, setCardComplete] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
 
   const [formData, setFormData] = useState({
     requester_name: '',
@@ -34,7 +35,6 @@ function RequestFormContent({ eventCode }) {
   useEffect(() => {
     if (eventCode) {
       loadEvent();
-      // Poll for event status changes every 5 seconds
       const interval = setInterval(loadEvent, 5000);
       return () => clearInterval(interval);
     }
@@ -90,6 +90,25 @@ function RequestFormContent({ eventCode }) {
     }
   }, [formData.host_code, event]);
 
+  const handleContinueToCheckout = (e) => {
+    e.preventDefault();
+    setError('');
+    
+    if (!formData.requester_name || !formData.song || !formData.artist) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    const isFreeRequest = !event.require_payment || hostCodeValid;
+    
+    if (!isFreeRequest && !cardComplete) {
+      setError('Please enter your credit card information');
+      return;
+    }
+
+    setShowCheckout(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -97,11 +116,12 @@ function RequestFormContent({ eventCode }) {
 
     try {
       const selectedTier = formData.tier;
-      const amount = event[`${selectedTier}_price`];
+      const djPrice = event[`${selectedTier}_price`];
+      const serviceFee = (djPrice * 0.08) + 0.30;
+      const totalAmount = djPrice + serviceFee;
       const tierName = event[`${selectedTier}_name`];
       const isFreeRequest = !event.require_payment || hostCodeValid;
 
-      // Check if card info is required but not complete
       if (!isFreeRequest && !cardComplete) {
         setError('Please enter your credit card information');
         setProcessing(false);
@@ -118,8 +138,10 @@ function RequestFormContent({ eventCode }) {
           artist: formData.artist,
           message: formData.message || null,
           tier_name: tierName,
-          amount: isFreeRequest ? 0 : amount,
-          payment_status: isFreeRequest ? 'free' : 'pending',
+          dj_price: isFreeRequest ? 0 : djPrice,
+          service_fee: isFreeRequest ? 0 : serviceFee,
+          amount: isFreeRequest ? 0 : totalAmount,
+          payment_status: isFreeRequest ? 'free' : 'authorized',
           request_status: 'pending',
           used_host_code: hostCodeValid
         }])
@@ -133,15 +155,8 @@ function RequestFormContent({ eventCode }) {
 
       const requestData = requestDataArray[0];
 
-      console.log('🎯 Starting queue position calculation');
-      console.log('📦 Request ID:', requestData.id);
-      console.log('🎵 Event ID:', event.id);
-      console.log('🏷️ Tier:', tierName);
-
-      // ===== SIMPLE TIER-BASED QUEUE POSITIONING =====
-
-      // Get all current requests for this event
-      const { data: existingRequests, error: fetchError } = await supabase
+      // Queue positioning
+      const { data: existingRequests } = await supabase
         .from('requests')
         .select('id, queue_position, tier_name')
         .eq('event_id', event.id)
@@ -149,75 +164,40 @@ function RequestFormContent({ eventCode }) {
         .neq('id', requestData.id)
         .order('queue_position', { ascending: true, nullsFirst: false });
 
-      console.log('📊 Existing requests:', existingRequests?.length);
-      console.log('❌ Fetch error:', fetchError);
-
-      // Count how many requests we have
       const totalExisting = existingRequests?.length || 0;
-
-      // Count VIP requests
       const vipCount = existingRequests?.filter(r => 
         r.tier_name.toLowerCase().includes('vip') || 
         r.tier_name.toLowerCase().includes('tier_3')
       ).length || 0;
 
-      console.log('📈 Total existing:', totalExisting);
-      console.log('👑 VIP count:', vipCount);
-
       let newPosition;
-
-      // Determine position based on tier (host code = VIP)
       const effectiveTier = hostCodeValid ? 'tier_3' : tierName;
 
       if (effectiveTier.toLowerCase().includes('vip') || effectiveTier.toLowerCase().includes('tier_3')) {
         newPosition = vipCount + 1;
-        console.log('👑 VIP tier - position:', newPosition);
-        
       } else if (effectiveTier.toLowerCase().includes('priority') || effectiveTier.toLowerCase().includes('tier_2')) {
         newPosition = Math.max(vipCount + 1, totalExisting - 2);
-        console.log('⚡ Priority tier - position:', newPosition);
-        
       } else {
         newPosition = totalExisting + 1;
-        console.log('📝 Standard tier - position:', newPosition);
       }
 
-      console.log('🎯 Final position:', newPosition);
-
-      // Shift existing requests down if needed
       if (existingRequests && existingRequests.length > 0) {
-        const requestsToShift = existingRequests.filter(r => 
-          r.queue_position >= newPosition
-        );
-        
-        console.log('🔄 Requests to shift:', requestsToShift.length);
-        
+        const requestsToShift = existingRequests.filter(r => r.queue_position >= newPosition);
         for (const req of requestsToShift) {
-          const { error: shiftError } = await supabase
+          await supabase
             .from('requests')
             .update({ queue_position: req.queue_position + 1 })
             .eq('id', req.id);
-          
-          if (shiftError) console.error('❌ Shift error:', shiftError);
         }
       }
 
-      // Set new request's position
-      console.log('✍️ Setting position to:', newPosition);
-
-      const { error: updateError } = await supabase
+      await supabase
         .from('requests')
         .update({ queue_position: newPosition })
         .eq('id', requestData.id);
 
-      console.log('❌ Update error:', updateError);
-      console.log('✅ Position set complete!');
-
-      // ===== END QUEUE POSITIONING =====
-
       // If free request, we're done
       if (isFreeRequest) {
-        // Decrement host code uses if used
         if (hostCodeValid) {
           await supabase
             .from('events')
@@ -229,23 +209,22 @@ function RequestFormContent({ eventCode }) {
 
         setSuccess(true);
         setTimeout(() => {
-          const code = router.query.code || eventCode;
-          router.push(`/event/${code}`);
+          router.push(`/event/${eventCode}`);
         }, 2000);
         return;
       }
 
-      // Process payment for paid requests
+      // Process payment authorization
       if (!stripe || !elements) {
         throw new Error('Stripe not loaded');
       }
 
-      // Create payment intent
       const response = await fetch('/api/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: amount,
+          djPrice: djPrice,
+          totalAmount: totalAmount,
           eventId: event.id,
           requestId: requestData.id,
         }),
@@ -254,7 +233,6 @@ function RequestFormContent({ eventCode }) {
       const { clientSecret, error: intentError } = await response.json();
       if (intentError) throw new Error(intentError);
 
-      // Confirm payment
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement),
@@ -265,7 +243,6 @@ function RequestFormContent({ eventCode }) {
       });
 
       if (stripeError) {
-        // Payment failed - update request status
         await supabase
           .from('requests')
           .update({ 
@@ -277,19 +254,17 @@ function RequestFormContent({ eventCode }) {
         throw new Error(stripeError.message);
       }
 
-      // Payment succeeded - update request
       await supabase
         .from('requests')
         .update({ 
-          payment_status: 'captured',
+          payment_status: 'authorized',
           stripe_payment_id: paymentIntent.id
         })
         .eq('id', requestData.id);
 
       setSuccess(true);
       setTimeout(() => {
-        const code = router.query.code || eventCode;
-        router.push(`/event/${code}`);
+        router.push(`/event/${eventCode}`);
       }, 2000);
 
     } catch (err) {
@@ -297,593 +272,3 @@ function RequestFormContent({ eventCode }) {
       setProcessing(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: '#0b0b0d',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'white'
-      }}>
-        Loading...
-      </div>
-    );
-  }
-
-  if (success) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: '#0b0b0d',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px'
-      }}>
-        <div style={{
-          background: 'rgba(0,255,136,0.1)',
-          border: '2px solid #00ff88',
-          padding: '40px',
-          borderRadius: '20px',
-          textAlign: 'center',
-          maxWidth: '400px'
-        }}>
-          <h1 style={{ 
-            color: '#00ff88',
-            marginBottom: '15px',
-            fontSize: '28px'
-          }}>
-            Request Submitted!
-          </h1>
-          <p style={{ 
-            color: 'rgba(255,255,255,0.8)',
-            marginBottom: '10px'
-          }}>
-            Your song has been added to the queue.
-          </p>
-          <p style={{ 
-            color: 'rgba(255,255,255,0.6)',
-            fontSize: '14px'
-          }}>
-            Redirecting to queue...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Check if event is paused or ended
-  const acceptingStatus = event.accepting_requests || 'open';
-
-  if (acceptingStatus === 'paused') {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: '#0b0b0d',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px'
-      }}>
-        <div style={{
-          background: 'rgba(255,215,0,0.1)',
-          border: '2px solid #FFD700',
-          padding: '40px',
-          borderRadius: '20px',
-          textAlign: 'center',
-          maxWidth: '500px'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}></div>
-          <h1 style={{ 
-            color: '#FFD700',
-            marginBottom: '20px',
-            fontSize: '28px'
-          }}>
-            Requests Paused
-          </h1>
-          <p style={{ 
-            color: 'rgba(255,255,255,0.8)',
-            marginBottom: '20px',
-            lineHeight: '1.6'
-          }}>
-            {event.pause_message || 'Thank you for all the requests. I am catching up and will open it again soon.'}
-          </p>
-          <button
-            onClick={() => router.push(`/event/${eventCode}`)}
-            style={{
-              padding: '12px 24px',
-              background: 'rgba(255,215,0,0.2)',
-              color: '#FFD700',
-              border: '1px solid #FFD700',
-              borderRadius: '10px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
-            Back to Queue
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (acceptingStatus === 'ended') {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: '#0b0b0d',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px'
-      }}>
-        <div style={{
-          background: 'rgba(255,0,110,0.1)',
-          border: '2px solid #ff006e',
-          padding: '40px',
-          borderRadius: '20px',
-          textAlign: 'center',
-          maxWidth: '500px'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}></div>
-          <h1 style={{ 
-            color: '#ff006e',
-            marginBottom: '20px',
-            fontSize: '28px'
-          }}>
-            Event Ended
-          </h1>
-          <p style={{ 
-            color: 'rgba(255,255,255,0.8)',
-            marginBottom: '20px',
-            lineHeight: '1.6',
-            whiteSpace: 'pre-wrap'
-          }}>
-            {event.end_message || 'Thanks for an amazing night! This event has ended.'}
-          </p>
-          <button
-            onClick={() => router.push(`/event/${eventCode}`)}
-            style={{
-              padding: '12px 24px',
-              background: 'rgba(255,0,110,0.2)',
-              color: '#ff006e',
-              border: '1px solid #ff006e',
-              borderRadius: '10px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
-            Back to Queue
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const isFreeEvent = !event.require_payment;
-  const isFreeRequest = isFreeEvent || hostCodeValid;
-
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#0b0b0d',
-      padding: '20px',
-      fontFamily: '-apple-system, sans-serif'
-    }}>
-      <div style={{
-        maxWidth: '600px',
-        margin: '0 auto',
-        paddingTop: '40px'
-      }}>
-        <div style={{
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,0,110,0.2)',
-          borderRadius: '20px',
-          padding: '40px'
-        }}>
-          <h1 style={{
-            color: '#ff6b35',
-            marginBottom: '10px',
-            fontSize: '32px',
-            textAlign: 'center'
-          }}>
-            Request a Song
-          </h1>
-          <p style={{
-            color: 'rgba(255,255,255,0.6)',
-            textAlign: 'center',
-            marginBottom: '30px',
-            fontSize: '14px'
-          }}>
-            {event.event_name}
-          </p>
-
-          <form onSubmit={handleSubmit}>
-            <input
-              type="text"
-              placeholder="Your Name"
-              value={formData.requester_name}
-              onChange={(e) => setFormData({...formData, requester_name: e.target.value})}
-              required
-              disabled={processing}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '14px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                color: 'white',
-                fontSize: '16px',
-                marginBottom: '15px'
-              }}
-            />
-
-            <input
-              type="text"
-              placeholder="Song Title"
-              value={formData.song}
-              onChange={(e) => setFormData({...formData, song: e.target.value})}
-              required
-              disabled={processing}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '14px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                color: 'white',
-                fontSize: '16px',
-                marginBottom: '15px'
-              }}
-            />
-
-            <input
-              type="text"
-              placeholder="Artist"
-              value={formData.artist}
-              onChange={(e) => setFormData({...formData, artist: e.target.value})}
-              required
-              disabled={processing}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '14px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                color: 'white',
-                fontSize: '16px',
-                marginBottom: '15px'
-              }}
-            />
-
-            <textarea
-              placeholder="Message (Optional)"
-              value={formData.message}
-              onChange={(e) => setFormData({...formData, message: e.target.value})}
-              disabled={processing}
-              rows="3"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '14px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                color: 'white',
-                fontSize: '16px',
-                marginBottom: '20px',
-                resize: 'vertical',
-                fontFamily: '-apple-system, sans-serif'
-              }}
-            />
-
-            {/* Host Code Input */}
-            {event.host_code && (
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{
-                  display: 'block',
-                  color: 'rgba(255,255,255,0.7)',
-                  fontSize: '14px',
-                  marginBottom: '8px'
-                }}>
-                  Host Code (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter host code for free request"
-                  value={formData.host_code}
-                  onChange={(e) => setFormData({...formData, host_code: e.target.value.toUpperCase()})}
-                  disabled={processing}
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '12px',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px',
-                    color: 'white',
-                    fontSize: '16px'
-                  }}
-                />
-                {hostCodeValid && (
-                  <p style={{
-                    color: '#00ff88',
-                    fontSize: '13px',
-                    marginTop: '8px',
-                    marginBottom: '0'
-                  }}>
-                    Valid code! This request is free. ({event.host_code_uses_remaining - 1} uses remaining after this)
-                  </p>
-                )}
-                {hostCodeError && (
-                  <p style={{
-                    color: '#ff6b6b',
-                    fontSize: '13px',
-                    marginTop: '8px',
-                    marginBottom: '0'
-                  }}>
-                    {hostCodeError}
-                  </p>
-                )}
-              </div>
-            )}
-
-          {/* Pricing Tiers - Only show if payment required and no valid host code */}
-          {event.require_payment && !hostCodeValid && (
-            <div style={{
-              padding: '15px',
-              background: 'rgba(255,0,110,0.05)',
-              border: '1px solid rgba(255,0,110,0.2)',
-              borderRadius: '10px',
-              marginBottom: '20px'
-            }}>
-              <label style={{
-                display: 'block',
-                color: 'rgba(255,255,255,0.7)',
-                fontSize: '14px',
-                marginBottom: '12px'
-              }}>
-                Select Tier
-              </label>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {[
-                  { key: 'tier_1', desc: 'Goes to bottom of queue' },
-                  { key: 'tier_2', desc: 'Jumps 3 songs up the queue' },
-                  { key: 'tier_3', desc: 'Goes to top (below other VIPs)' }
-                ].map(tier => (
-                  <label
-                    key={tier.key}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '12px',
-                      background: formData.tier === tier.key ? 'rgba(255,0,110,0.2)' : 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${formData.tier === tier.key ? '#ff006e' : 'rgba(255,255,255,0.1)'}`,
-                      borderRadius: '8px',
-                      cursor: processing ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s',
-                      opacity: processing ? 0.5 : 1
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="tier"
-                      value={tier.key}
-                      checked={formData.tier === tier.key}
-                      onChange={(e) => setFormData({...formData, tier: e.target.value})}
-                      disabled={processing}
-                      style={{ marginRight: '10px' }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <div style={{
-                        color: 'white',
-                        fontWeight: '600',
-                        marginBottom: '4px'
-                      }}>
-                        {event[`${tier.key}_name`]}
-                      </div>
-                      <div style={{
-                        color: 'rgba(255,255,255,0.5)',
-                        fontSize: '12px'
-                      }}>
-                        {tier.desc}
-                      </div>
-                    </div>
-                    <span style={{
-                      color: '#00f5ff',
-                      fontWeight: '700',
-                      fontSize: '18px'
-                    }}>
-                      ${event[`${tier.key}_price`]}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Host Code gets VIP automatically */}
-          {hostCodeValid && (
-            <div style={{
-              padding: '15px',
-              background: 'rgba(255,215,0,0.1)',
-              border: '1px solid rgba(255,215,0,0.3)',
-              borderRadius: '10px',
-              marginBottom: '20px',
-              textAlign: 'center'
-            }}>
-              <p style={{
-                color: '#FFD700',
-                fontSize: '16px',
-                fontWeight: '600',
-                margin: '0 0 5px 0'
-              }}>
-                 VIP Access Granted!
-              </p>
-              <p style={{
-                color: 'rgba(255,255,255,0.7)',
-                fontSize: '13px',
-                margin: '0'
-              }}>
-                Your request will go to the top of the queue
-              </p>
-            </div>
-          )}
-
-            {/* Payment Card - Only show if payment required and no valid host code */}
-            {event.require_payment && !hostCodeValid && (
-              <div style={{
-                padding: '15px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '10px',
-                marginBottom: '20px'
-              }}>
-                <label style={{
-                  display: 'block',
-                  color: 'rgba(255,255,255,0.7)',
-                  fontSize: '14px',
-                  marginBottom: '12px'
-                }}>
-                  Card Details
-                </label>
-                <div style={{
-                  padding: '14px',
-                  background: 'white',
-                  borderRadius: '8px'
-                }}>
-                  <CardElement
-                    options={{
-                      style: {
-                        base: {
-                          fontSize: '16px',
-                          color: '#0b0b0d',
-                          '::placeholder': {
-                            color: '#999',
-                          },
-                        },
-                      },
-                    }}
-                    onChange={(e) => {
-                      setCardComplete(e.complete);
-                      setCardError(e.error ? e.error.message : '');
-                    }}
-                  />
-                </div>
-                {cardError && (
-                  <p style={{
-                    color: '#ff6b6b',
-                    fontSize: '13px',
-                    marginTop: '8px',
-                    marginBottom: '0'
-                  }}>
-                    {cardError}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Free Event Message */}
-            {isFreeEvent && !event.host_code && (
-              <div style={{
-                padding: '15px',
-                background: 'rgba(0,255,136,0.1)',
-                border: '1px solid rgba(0,255,136,0.3)',
-                borderRadius: '10px',
-                marginBottom: '20px',
-                textAlign: 'center'
-              }}>
-                <p style={{
-                  color: '#00ff88',
-                  fontSize: '14px',
-                  margin: '0'
-                }}>
-                  This event has free requests!
-                </p>
-              </div>
-            )}
-
-            {error && (
-              <p style={{ 
-                color: '#ff6b6b',
-                marginBottom: '15px',
-                fontSize: '14px'
-              }}>
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={processing || (!isFreeRequest && (!stripe || !elements))}
-              style={{
-                width: '100%',
-                padding: '16px',
-                background: processing 
-                  ? 'rgba(255,255,255,0.1)'
-                  : isFreeRequest 
-                    ? 'linear-gradient(135deg, #00ff88, #00cc6a)'
-                    : 'linear-gradient(135deg, #ff006e, #ff4d8f)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
-                fontSize: '18px',
-                fontWeight: '700',
-                cursor: processing ? 'not-allowed' : 'pointer',
-                opacity: processing ? 0.6 : 1,
-                boxShadow: isFreeRequest
-                  ? '0 4px 20px rgba(0,255,136,0.4)'
-                  : '0 4px 20px rgba(255,0,110,0.4)'
-              }}
-            >
-              {processing 
-                ? 'Processing...' 
-                : isFreeRequest 
-                  ? 'Submit Free Request' 
-                  : `Pay $${event[`${formData.tier}_price`]} & Submit`}
-            </button>
-          </form>
-
-          <button
-            onClick={() => router.push(`/event/${eventCode}`)}
-            disabled={processing}
-            style={{
-              width: '100%',
-              marginTop: '15px',
-              padding: '12px',
-              background: 'rgba(255,255,255,0.05)',
-              color: 'rgba(255,255,255,0.7)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '10px',
-              fontSize: '14px',
-              cursor: processing ? 'not-allowed' : 'pointer',
-              opacity: processing ? 0.5 : 1
-            }}
-          >
-            Back to Queue
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function RequestForm() {
-  const router = useRouter();
-  const { code } = router.query;
-
-  return (
-    <Elements stripe={stripePromise}>
-      <RequestFormContent eventCode={code} />
-    </Elements>
-  );
-}
