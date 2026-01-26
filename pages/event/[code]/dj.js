@@ -54,7 +54,6 @@ export default function DJPanel() {
         const { password: savedPassword, expiry } = JSON.parse(stored);
         if (Date.now() < expiry) {
           setPassword(savedPassword);
-          // Wait for event to load before checking password
           setTimeout(() => {
             setAuthenticated(true);
           }, 500);
@@ -78,7 +77,6 @@ export default function DJPanel() {
       if (eventError) throw eventError;
       setEvent(eventData);
       
-      // Initialize edit form with current values
       setEditForm({
         event_name: eventData.event_name || '',
         event_date: eventData.event_date || '',
@@ -120,9 +118,8 @@ export default function DJPanel() {
       setAuthenticated(true);
       setError('');
       
-      // Save password if Remember Me is checked
       if (rememberMe) {
-        const expiry = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
+        const expiry = Date.now() + (24 * 60 * 60 * 1000);
         localStorage.setItem(`dj_auth_${code}`, JSON.stringify({
           password: password,
           expiry: expiry
@@ -139,29 +136,67 @@ export default function DJPanel() {
     setPassword('');
   };
 
-  const handleApprove = async (requestId) => {
-    const { error } = await supabase
-      .from('requests')
-      .update({ 
-        request_status: 'approved',
-        payment_status: 'captured'
-      })
-      .eq('id', requestId);
+  const handleApprove = async (requestId, paymentStatus) => {
+    try {
+      if (paymentStatus === 'authorized') {
+        const response = await fetch('/api/capture-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requestId }),
+        });
 
-    if (!error) loadRequests();
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to capture payment');
+        }
+      } else {
+        const { error } = await supabase
+          .from('requests')
+          .update({ 
+            request_status: 'approved',
+            payment_status: paymentStatus === 'free' ? 'free' : 'captured'
+          })
+          .eq('id', requestId);
+
+        if (error) throw error;
+      }
+
+      loadRequests();
+    } catch (err) {
+      alert('Error approving request: ' + err.message);
+    }
   };
 
-  const handleReject = async (requestId) => {
-    const { error } = await supabase
-      .from('requests')
-      .update({ 
-        request_status: 'rejected',
-        payment_status: 'cancelled',
-        rejection_reason: 'Song not available'
-      })
-      .eq('id', requestId);
+  const handleReject = async (requestId, paymentStatus) => {
+    try {
+      if (paymentStatus === 'authorized') {
+        const response = await fetch('/api/cancel-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requestId }),
+        });
 
-    if (!error) loadRequests();
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to cancel payment');
+        }
+      } else {
+        const { error } = await supabase
+          .from('requests')
+          .update({ 
+            request_status: 'rejected',
+            payment_status: paymentStatus === 'free' ? 'free' : 'cancelled',
+            rejection_reason: 'Song not available'
+          })
+          .eq('id', requestId);
+
+        if (error) throw error;
+      }
+
+      loadRequests();
+    } catch (err) {
+      alert('Error rejecting request: ' + err.message);
+    }
   };
 
   const handlePauseToggle = async () => {
@@ -470,7 +505,7 @@ export default function DJPanel() {
               boxShadow: '0 4px 15px rgba(0,245,255,0.3)'
             }}
           >
-            Edit Event
+            ✏️ Edit Event
           </button>
 
           {acceptingStatus !== 'ended' && (
@@ -490,7 +525,7 @@ export default function DJPanel() {
                 boxShadow: '0 4px 15px rgba(255,215,0,0.3)'
               }}
             >
-              {acceptingStatus === 'paused' ? 'Resume Requests' : 'Pause Requests'}
+              {acceptingStatus === 'paused' ? '▶️ Resume Requests' : '⏸️ Pause Requests'}
             </button>
           )}
           
@@ -509,7 +544,7 @@ export default function DJPanel() {
                 boxShadow: '0 4px 15px rgba(255,0,110,0.3)'
               }}
             >
-              End Event
+              🏁 End Event
             </button>
           )}
 
@@ -528,7 +563,7 @@ export default function DJPanel() {
                 boxShadow: '0 4px 15px rgba(0,255,136,0.3)'
               }}
             >
-              Reopen Event
+              🔓 Reopen Event
             </button>
           )}
 
@@ -557,10 +592,10 @@ export default function DJPanel() {
                 : '#00ff88'
           }}>
             {acceptingStatus === 'ended' 
-              ? 'Event Ended'
+              ? '🔴 Event Ended'
               : acceptingStatus === 'paused'
-                ? 'Paused'
-                : 'Accepting Requests'}
+                ? '⏸️ Paused'
+                : '🟢 Accepting Requests'}
           </div>
         </div>
 
@@ -1043,7 +1078,7 @@ export default function DJPanel() {
                     flexShrink: 0
                   }}>
                     <button
-                      onClick={() => handleApprove(request.id)}
+                      onClick={() => handleApprove(request.id, request.payment_status)}
                       style={{
                         padding: '6px 12px',
                         background: '#00ff88',
@@ -1059,7 +1094,7 @@ export default function DJPanel() {
                       Played
                     </button>
                     <button
-                      onClick={() => handleReject(request.id)}
+                      onClick={() => handleReject(request.id, request.payment_status)}
                       style={{
                         padding: '6px 12px',
                         background: 'rgba(255,0,0,0.2)',
