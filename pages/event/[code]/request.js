@@ -982,7 +982,7 @@ if (loading) {
                 fontWeight: '600',
                 margin: '0 0 5px 0'
               }}>
-                🎉 VIP Access Granted!
+                VIP Access Granted!
               </p>
               <p style={{
                 color: 'rgba(255,255,255,0.7)',
