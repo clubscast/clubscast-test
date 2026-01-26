@@ -90,24 +90,17 @@ function RequestFormContent({ eventCode }) {
     }
   }, [formData.host_code, event]);
 
-  const handleContinueToCheckout = (e) => {
-    e.preventDefault();
-    setError('');
-    
-    if (!formData.requester_name || !formData.song || !formData.artist) {
-      setError('Please fill in all required fields');
-      return;
-    }
+ const handleContinueToCheckout = (e) => {
+  e.preventDefault();
+  setError('');
+  
+  if (!formData.requester_name || !formData.song || !formData.artist) {
+    setError('Please fill in all required fields');
+    return;
+  }
 
-    const isFreeRequest = !event.require_payment || hostCodeValid;
-    
-    if (!isFreeRequest && !cardComplete) {
-      setError('Please enter your credit card information');
-      return;
-    }
-
-    setShowCheckout(true);
-  };
+  setShowCheckout(true);
+};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -993,58 +986,6 @@ if (loading) {
               </p>
             </div>
           )}
-
-            {event.require_payment && !hostCodeValid && (
-              <div style={{
-                padding: '15px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '10px',
-                marginBottom: '20px'
-              }}>
-                <label style={{
-                  display: 'block',
-                  color: 'rgba(255,255,255,0.7)',
-                  fontSize: '14px',
-                  marginBottom: '12px'
-                }}>
-                  Card Details
-                </label>
-                <div style={{
-                  padding: '14px',
-                  background: 'white',
-                  borderRadius: '8px'
-                }}>
-                  <CardElement
-                    options={{
-                      style: {
-                        base: {
-                          fontSize: '16px',
-                          color: '#0b0b0d',
-                          '::placeholder': {
-                            color: '#999',
-                          },
-                        },
-                      },
-                    }}
-                    onChange={(e) => {
-                      setCardComplete(e.complete);
-                      setCardError(e.error ? e.error.message : '');
-                    }}
-                  />
-                </div>
-                {cardError && (
-                  <p style={{
-                    color: '#ff6b6b',
-                    fontSize: '13px',
-                    marginTop: '8px',
-                    marginBottom: '0'
-                  }}>
-                    {cardError}
-                  </p>
-                )}
-              </div>
-            )}
 
             {isFreeEvent && !event.host_code && (
               <div style={{
