@@ -144,7 +144,63 @@ export default function DJPanel() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ requestId }),
         });
+const handleExportCSV = () => {
+  if (!requests || requests.length === 0) {
+    alert('No requests to export');
+    return;
+  }
 
+  const headers = [
+    'Position',
+    'Status',
+    'Song',
+    'Artist',
+    'Requester',
+    'Tier',
+    'DJ Price',
+    'Service Fee',
+    'Total Amount',
+    'Payment Status',
+    'Message',
+    'Time Requested',
+    'Host Code Used'
+  ];
+
+  const allRequests = [...requests].sort((a, b) => {
+    return new Date(a.created_at) - new Date(b.created_at);
+  });
+
+  const csvRows = [
+    headers.join(','),
+    ...allRequests.map((req, index) => {
+      const row = [
+        req.queue_position || (index + 1),
+        req.request_status,
+        `"${req.song}"`,
+        `"${req.artist}"`,
+        `"${req.requester_name}"`,
+        req.tier_name,
+        req.dj_price || 0,
+        req.service_fee || 0,
+        req.amount || 0,
+        req.payment_status,
+        `"${req.message || ''}"`,
+        new Date(req.created_at).toLocaleString(),
+        req.used_host_code ? 'Yes' : 'No'
+      ];
+      return row.join(',');
+    })
+  ];
+
+  const csvContent = csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${event.event_name.replace(/\s+/g, '_')}_${code}_requests.csv`;
+  link.click();
+  window.URL.revokeObjectURL(url);
+};
         const result = await response.json();
         if (!result.success) {
           throw new Error(result.error || 'Failed to capture payment');
@@ -464,6 +520,22 @@ export default function DJPanel() {
                 fontWeight: '600'
               }}
             >
+            <button
+              onClick={handleExportCSV}
+              style={{
+                padding: '12px 24px',
+                background: 'linear-gradient(135deg, #00ff88, #00cc6a)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                fontSize: '15px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(0,255,136,0.3)'
+              }}
+            >
+              📥 Export CSV
+            </button>
               View Queue
             </button>
             <button
