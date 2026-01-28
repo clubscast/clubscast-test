@@ -1107,15 +1107,14 @@ useEffect(() => {
                 style={{
                   width: '100%',
                   padding: '10px',
-                  background: 'linear-gradient(135deg, #00f5ff, #0099ff)',
-                  color: 'white',
-                  border: 'none',
+                  background: 'rgba(0,255,136,0.2)',
+                  color: '#00ff88',
+                  border: '1px solid rgba(0,255,136,0.3)',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   fontSize: '14px',
-                  fontWeight: '700',
-                  marginBottom: '10px',
-                  boxShadow: '0 4px 15px rgba(0,245,255,0.3)'
+                  fontWeight: '600',
+                  marginBottom: '10px'
                 }}
               >
                 Export CSV
