@@ -1118,7 +1118,7 @@ useEffect(() => {
                   boxShadow: '0 4px 15px rgba(0,245,255,0.3)'
                 }}
               >
-                📥 Export CSV
+                Export CSV
               </button>
 
               <button
