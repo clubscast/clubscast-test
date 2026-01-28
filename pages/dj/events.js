@@ -90,6 +90,76 @@ export default function DJEvents() {
     }
   };
 
+  const handleExportCSV = async (event, e) => {
+    e.stopPropagation(); // Prevent card click
+    
+    try {
+      // Fetch all requests for this event
+      const { data: requests, error } = await supabase
+        .from('requests')
+        .select('*')
+        .eq('event_id', event.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      if (!requests || requests.length === 0) {
+        alert('No requests to export for this event');
+        return;
+      }
+
+      // Create CSV
+      const headers = [
+        'Position',
+        'Status',
+        'Song',
+        'Artist',
+        'Requester',
+        'Tier',
+        'DJ Price',
+        'Service Fee',
+        'Total Amount',
+        'Payment Status',
+        'Message',
+        'Time Requested',
+        'Host Code Used'
+      ];
+
+      const csvRows = [
+        headers.join(','),
+        ...requests.map((req, index) => {
+          const row = [
+            req.queue_position || (index + 1),
+            req.request_status,
+            `"${req.song}"`,
+            `"${req.artist}"`,
+            `"${req.requester_name}"`,
+            req.tier_name,
+            req.dj_price || 0,
+            req.service_fee || 0,
+            req.amount || 0,
+            req.payment_status,
+            `"${req.message || ''}"`,
+            new Date(req.created_at).toLocaleString(),
+            req.used_host_code ? 'Yes' : 'No'
+          ];
+          return row.join(',');
+        })
+      ];
+
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${event.event_name.replace(/\s+/g, '_')}_${event.event_code}_requests.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Error exporting CSV: ' + err.message);
+    }
+  };
+
   const handleLogout = () => {
     sessionStorage.removeItem('dj_id');
     sessionStorage.removeItem('dj_password');
@@ -340,7 +410,8 @@ export default function DJEvents() {
                   padding: '10px',
                   background: 'rgba(255,255,255,0.03)',
                   borderRadius: '8px',
-                  fontSize: '13px'
+                  fontSize: '13px',
+                  marginBottom: '15px'
                 }}>
                   <div>
                     <span style={{ color: 'rgba(255,255,255,0.5)' }}>Pending: </span>
@@ -355,6 +426,31 @@ export default function DJEvents() {
                     <span style={{ color: '#ff6b6b', fontWeight: '600' }}>{event.rejected}</span>
                   </div>
                 </div>
+
+                <button
+                  onClick={(e) => handleExportCSV(event, e)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    background: 'linear-gradient(135deg, #00f5ff, #0099ff)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 15px rgba(0,245,255,0.3)',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.02)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  📥 Export CSV
+                </button>
               </div>
             );
           })}
