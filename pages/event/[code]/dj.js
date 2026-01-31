@@ -464,22 +464,6 @@ export default function DJPanel() {
                 fontWeight: '600'
               }}
             >
-            <button
-              onClick={handleExportCSV}
-              style={{
-                padding: '12px 24px',
-                background: 'linear-gradient(135deg, #00ff88, #00cc6a)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '15px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                boxShadow: '0 4px 15px rgba(0,255,136,0.3)'
-              }}
-            >
-              📥 Export CSV
-            </button>
               View Queue
             </button>
             <button
