@@ -101,7 +101,6 @@ useEffect(() => {
         'Total Amount',
         'Payment Status',
         'Message',
-        'Time Requested',
         'Host Code Used'
       ];
 
@@ -120,7 +119,6 @@ useEffect(() => {
             req.amount || 0,
             req.payment_status,
             `"${req.message || ''}"`,
-            new Date(req.created_at).toLocaleString(),
             req.used_host_code ? 'Yes' : 'No'
           ];
           return row.join(',');
