@@ -15,6 +15,7 @@
     "qrcode": "^1.5.3",
     "stripe": "^14.0.0",
     "@stripe/stripe-js": "^2.4.0",
-    "@stripe/react-stripe-js": "^2.4.0"
+    "@stripe/react-stripe-js": "^2.4.0",
+    npx fix-react2shell-next
   }
 }
