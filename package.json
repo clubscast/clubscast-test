@@ -16,5 +16,6 @@
     "stripe": "^14.0.0",
     "@stripe/stripe-js": "^2.4.0",
     "@stripe/react-stripe-js": "^2.4.0"
+    npm install next@latest react@latest react-dom@latest
   }
 }
