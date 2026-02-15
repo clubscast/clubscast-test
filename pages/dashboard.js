@@ -79,7 +79,7 @@ useEffect(() => {
         .from('requests')
         .select('*')
         .eq('event_id', event.id)
-        .order('created_at', { ascending: true });
+        .order('queue_position', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
 
