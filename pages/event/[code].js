@@ -250,7 +250,7 @@ export default function EventQueue() {
           marginBottom: '30px'
         }}>
           <a 
-            href="https://clubscast.com" 
+            href="https://www.clubscast.com" 
             target="_blank" 
             rel="noopener noreferrer"
             style={{
