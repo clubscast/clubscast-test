@@ -244,6 +244,28 @@ export default function EventQueue() {
           </p>
         </div>
 
+        {/* ClubsCast Branding */}
+        <div style={{
+          textAlign: 'center',
+          marginBottom: '30px'
+        }}>
+          <a 
+            href="https://clubscast.com" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: '13px',
+              textDecoration: 'none',
+              transition: 'color 0.2s'
+            }}
+            onMouseEnter={(e) => e.target.style.color = '#00f5ff'}
+            onMouseLeave={(e) => e.target.style.color = 'rgba(255,255,255,0.5)'}
+          >
+            Powered by ClubsCast.com
+          </a>
+        </div>
+
         {/* Success Message */}
         {ratingSuccess && (
           <div style={{
