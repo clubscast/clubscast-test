@@ -395,8 +395,8 @@ useEffect(() => {
             {!user?.stripe_account_id && (
               <button
                 onClick={() => {
-                  const baseUrl = window.location.origin;
-                  const returnUrl = `${baseUrl}/connect-return`;
+                  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin; // ✅ Uses consistent URL
+                  const returnUrl = `${baseUrl}/api/stripe-oauth-callback`;
                   const refreshUrl = `${baseUrl}/connect-refresh`;
                   const stripeConnectUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID}&scope=read_write&state=${user.id}&redirect_uri=${encodeURIComponent(returnUrl)}`;
                   console.log('🔍 Return URL:', returnUrl);
