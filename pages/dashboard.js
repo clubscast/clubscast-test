@@ -42,21 +42,48 @@ useEffect(() => {
 }, [router.query]);
 
   const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      router.push('/login');
-      return;
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        router.push('/login');
+        return;
+      }
+      
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+
+      const { data: djData, error: djError } = await supabase
+        .from('djs')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (djError) {
+        console.error('Error loading DJ profile:', djError);
+        setError('Error loading profile: ' + djError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!djData) {
+        console.error('No DJ profile found for user:', session.user.id);
+        setError('DJ profile not found. Please contact support.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('User loaded successfully:', djData);
+      setUser(djData);
+      loadEvents(session.user.id);
+    } catch (error) {
+      console.error('Unexpected error in checkUser:', error);
+      setError('Unexpected error loading profile');
+      setLoading(false);
     }
-
-    const { data: djData } = await supabase
-      .from('djs')
-      .select('*')
-      .eq('id', session.user.id)
-      .single();
-
-    setUser(djData);
-    loadEvents(session.user.id);
   };
 
   const loadEvents = async (djId = user?.id) => {
@@ -306,6 +333,65 @@ useEffect(() => {
         color: 'white'
       }}>
         Loading...
+      </div>
+    );
+  }
+
+  if (error && !user) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#0a0a0f',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
+        <div style={{
+          background: '#1a1a1f',
+          border: '1px solid #ff006e',
+          borderRadius: '12px',
+          padding: '40px',
+          maxWidth: '500px',
+          textAlign: 'center'
+        }}>
+          <h2 style={{ color: '#ff006e', marginBottom: '20px' }}>Error Loading Profile</h2>
+          <p style={{ color: '#e0e0e0', marginBottom: '30px' }}>{error}</p>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <button
+              onClick={() => {
+                setError('');
+                setLoading(true);
+                checkUser();
+              }}
+              style={{
+                padding: '12px 24px',
+                background: 'linear-gradient(135deg, #ff006e, #00f5ff)',
+                color: '#0a0a0f',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => router.push('/signup')}
+              style={{
+                padding: '12px 24px',
+                background: 'rgba(255,255,255,0.1)',
+                color: '#00f5ff',
+                border: '1px solid #00f5ff',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Sign Up Again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
