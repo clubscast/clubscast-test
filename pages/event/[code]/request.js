@@ -269,7 +269,7 @@ if (loading) {
     return (
       <div style={{
         minHeight: '100vh',
-        background: '#0b0b0d',
+        background: '#0a0a0f',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -284,7 +284,7 @@ if (loading) {
     return (
       <div style={{
         minHeight: '100vh',
-        background: '#0b0b0d',
+        background: '#0a0a0f',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -328,7 +328,7 @@ if (loading) {
     return (
       <div style={{
         minHeight: '100vh',
-        background: '#0b0b0d',
+        background: '#0a0a0f',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -381,7 +381,7 @@ if (loading) {
     return (
       <div style={{
         minHeight: '100vh',
-        background: '#0b0b0d',
+        background: '#0a0a0f',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -444,7 +444,7 @@ if (loading) {
     return (
       <div style={{
         minHeight: '100vh',
-        background: '#0b0b0d',
+        background: '#0a0a0f',
         padding: '20px',
         fontFamily: '-apple-system, sans-serif'
       }}>
@@ -571,7 +571,7 @@ if (loading) {
                     style: {
                       base: {
                         fontSize: '16px',
-                        color: '#0b0b0d',
+                        color: '#0a0a0f',
                         '::placeholder': {
                           color: '#999',
                         },
@@ -722,7 +722,7 @@ if (loading) {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0b0b0d',
+      background: '#0a0a0f',
       padding: '20px',
       fontFamily: '-apple-system, sans-serif'
     }}>
@@ -738,7 +738,7 @@ if (loading) {
           padding: '40px'
         }}>
           <h1 style={{
-            color: '#ff6b35',
+            color: '#ff006e',
             marginBottom: '10px',
             fontSize: '32px',
             textAlign: 'center'
