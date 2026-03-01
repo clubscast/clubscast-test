@@ -86,7 +86,7 @@ export default function CreateEvent() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0b0b0d',
+      background: '#0a0a0f',
       color: '#eef',
       padding: '20px',
       fontFamily: '-apple-system, sans-serif'
@@ -110,7 +110,7 @@ export default function CreateEvent() {
           </button>
           
           <h1 style={{ 
-            color: '#ff6b35',
+            color: '#ff006e',
             margin: '0 0 10px 0',
             fontSize: '32px'
           }}>
