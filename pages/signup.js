@@ -42,9 +42,8 @@ export default function Signup() {
       if (djError) throw djError;
 
       // Redirect to Stripe Connect onboarding
-      const baseUrl = window.location.origin;
-      const returnUrl = `${baseUrl}/connect-return`;
-      const refreshUrl = `${baseUrl}/connect-refresh`;
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
+      const returnUrl = `${baseUrl}/api/stripe-oauth-callback`
       
       // FIXED: Added /v2 and scope=read_write
      const stripeConnectUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID}&scope=read_write&state=${authData.user.id}&redirect_uri=${encodeURIComponent(returnUrl)}`;
