@@ -395,13 +395,41 @@ useEffect(() => {
             {!user?.stripe_account_id && (
               <button
                 onClick={() => {
-                  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
-                  const returnUrl = `${baseUrl}/api/stripe-oauth-callback`;
-                  const stripeConnectUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID}&scope=read_write&state=${user.id}&redirect_uri=${encodeURIComponent(returnUrl)}`;
-                  
-                  // Open Stripe in new tab
-                  window.open(stripeConnectUrl, '_blank');
-                  alert('Stripe Connect opened in a new tab. Complete the setup, then refresh this page.');
+                  try {
+                    // Check if user is loaded
+                    if (!user || !user.id) {
+                      alert('Error: User data not loaded. Please refresh the page.');
+                      return;
+                    }
+
+                    // Check if environment variable is set
+                    const clientId = process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID;
+                    if (!clientId) {
+                      alert('Error: Stripe client ID not configured. Please contact support.');
+                      console.error('Missing NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID');
+                      return;
+                    }
+
+                    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
+                    const returnUrl = `${baseUrl}/api/stripe-oauth-callback`;
+                    const stripeConnectUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${clientId}&scope=read_write&state=${user.id}&redirect_uri=${encodeURIComponent(returnUrl)}`;
+                    
+                    console.log('Opening Stripe Connect URL:', stripeConnectUrl);
+                    
+                    // Open Stripe in new tab
+                    const newTab = window.open(stripeConnectUrl, '_blank');
+                    
+                    // Check if popup was blocked
+                    if (!newTab || newTab.closed || typeof newTab.closed === 'undefined') {
+                      alert('Popup blocked! Please allow popups for this site and try again.');
+                      return;
+                    }
+                    
+                    alert('Stripe Connect opened in a new tab. Complete the setup, then refresh this page.');
+                  } catch (error) {
+                    console.error('Error opening Stripe Connect:', error);
+                    alert('Error: ' + error.message);
+                  }
                 }}
                 style={{
                   padding: '10px 20px',
