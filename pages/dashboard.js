@@ -398,6 +398,8 @@ useEffect(() => {
                   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
                   const returnUrl = `${baseUrl}/api/stripe-oauth-callback`;
                   const stripeConnectUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID}&scope=read_write&state=${user.id}&redirect_uri=${encodeURIComponent(returnUrl)}`;
+                  
+                  // Open Stripe in new tab
                   window.open(stripeConnectUrl, '_blank');
                   alert('Stripe Connect opened in a new tab. Complete the setup, then refresh this page.');
                 }}
