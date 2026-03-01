@@ -41,7 +41,7 @@ export default function Signup() {
       const stripeClientId = process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID;
       const redirectUri = `${baseUrl}/api/stripe-oauth-callback`;
       
-      const stripeUrl = `https://connect.stripe.com/oauth/authorize?client_id=${stripeClientId}&state=${authData.user.id}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read_write`;
+      const stripeUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${stripeClientId}&state=${authData.user.id}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read_write`;
 
       // Open Stripe in new tab
       window.open(stripeUrl, '_blank');
