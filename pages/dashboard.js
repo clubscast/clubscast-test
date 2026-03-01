@@ -313,7 +313,7 @@ useEffect(() => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0b0b0d',
+      background: '#0a0a0f',
       color: '#eef',
       padding: '20px',
       fontFamily: '-apple-system, sans-serif'
@@ -331,7 +331,7 @@ useEffect(() => {
         }}>
           <div>
             <h1 style={{ 
-              color: '#ff6b35',
+              color: '#ff006e',
               margin: '0 0 5px 0'
             }}>
               DJ Dashboard
@@ -405,14 +405,14 @@ useEffect(() => {
                 }}
                 style={{
                   padding: '10px 20px',
-                  background: 'linear-gradient(135deg, #FFD700, #FFA500)',
-                  color: 'white',
+                  background: 'linear-gradient(135deg, #00f5ff, #0099ff)',
+                  color: '#000',
                   border: 'none',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   fontSize: '14px',
                   fontWeight: '600',
-                  boxShadow: '0 4px 15px rgba(255,215,0,0.3)'
+                  boxShadow: '0 4px 15px rgba(0,245,255,0.3)'
                 }}
               >
                 Connect Stripe
@@ -466,7 +466,7 @@ useEffect(() => {
             marginBottom: '30px'
           }}>
             <h2 style={{ 
-              color: '#ff6b35',
+              color: '#ff006e',
               marginBottom: '20px'
             }}>
               Create New Event
@@ -996,7 +996,7 @@ useEffect(() => {
               }}
             >
               <h3 style={{ 
-                color: '#ff6b35',
+                color: '#ff006e',
                 marginBottom: '10px',
                 fontSize: '20px'
               }}>
@@ -1073,7 +1073,7 @@ useEffect(() => {
                     padding: '10px',
                     background: 'rgba(0,245,255,0.2)',
                     color: '#00f5ff',
-                    border: 'none',
+                    border: '1px solid rgba(0,245,255,0.5)',
                     borderRadius: '8px',
                     cursor: 'pointer',
                     fontSize: '14px',
@@ -1089,7 +1089,7 @@ useEffect(() => {
                     padding: '10px',
                     background: 'rgba(255,0,110,0.2)',
                     color: '#ff006e',
-                    border: 'none',
+                    border: '1px solid rgba(255,0,110,0.5)',
                     borderRadius: '8px',
                     cursor: 'pointer',
                     fontSize: '14px',
@@ -1105,9 +1105,9 @@ useEffect(() => {
                 style={{
                   width: '100%',
                   padding: '10px',
-                  background: 'rgba(0,255,136,0.2)',
-                  color: '#00ff88',
-                  border: '1px solid rgba(0,255,136,0.3)',
+                  background: 'rgba(0,245,255,0.2)',
+                  color: '#00f5ff',
+                  border: '1px solid rgba(0,245,255,0.5)',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   fontSize: '14px',
