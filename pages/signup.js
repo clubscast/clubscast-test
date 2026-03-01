@@ -36,12 +36,12 @@ export default function Signup() {
 
       if (profileError) throw profileError;
 
-      // Build Stripe Connect URL
+      // Build Stripe Connect URL (Standard accounts)
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://clubscast-request.vercel.app';
       const stripeClientId = process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID;
       const redirectUri = `${baseUrl}/api/stripe-oauth-callback`;
       
-      const stripeUrl = `https://connect.stripe.com/express/oauth/authorize?client_id=${stripeClientId}&state=${authData.user.id}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+      const stripeUrl = `https://connect.stripe.com/oauth/authorize?client_id=${stripeClientId}&state=${authData.user.id}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read_write`;
 
       // Open Stripe in new tab
       window.open(stripeUrl, '_blank');
