@@ -66,7 +66,7 @@ export default async function handler(req, res) {
         <body style="background: #0a0a0f; color: #00f5ff; font-family: system-ui; padding: 40px; text-align: center;">
           <div style="max-width: 500px; margin: 0 auto; background: #1a1a1f; border: 1px solid #ff006e; border-radius: 12px; padding: 40px;">
             <h1 style="color: #ff006e; text-shadow: 0 0 10px rgba(255, 0, 110, 0.5); margin-bottom: 20px;">
-              ✓ Stripe Connected!
+              Stripe Connected!
             </h1>
             <p style="color: #e0e0e0; font-size: 18px; margin-bottom: 30px;">
               Your Stripe account has been successfully connected.
@@ -82,7 +82,7 @@ export default async function handler(req, res) {
             </button>
             <br><br>
             <a href="/dashboard" style="color: #00f5ff; text-decoration: none; font-size: 14px;">
-              Or go to Dashboard →
+              Or go to Dashboard
             </a>
           </div>
         </body>
