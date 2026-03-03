@@ -454,7 +454,7 @@ useEffect(() => {
                   fontSize: '13px',
                   fontWeight: '600'
                 }}>
-                  ⚠ Stripe Not Connected
+                  Stripe Not Connected
                 </span>
               </div>
             )}
@@ -472,7 +472,7 @@ useEffect(() => {
                   fontSize: '13px',
                   fontWeight: '600'
                 }}>
-                  ✓ Stripe Connected
+                  Stripe Connected
                 </span>
               </div>
             )}
